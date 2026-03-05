@@ -85,7 +85,7 @@
     /* --- The Magic Grid Layout --- */
     #results { 
       display: grid; 
-      grid-template-columns: repeat(2, 1fr); /* 2 columns exactly like SaveClip */
+      grid-template-columns: repeat(2, 1fr); 
       gap: 15px; 
       margin-top: 20px; 
     }
@@ -249,8 +249,8 @@
       resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Snatching media... 🕵️‍♂️</p></div>`;
 
       try {
-        // Connected directly to your Bot-Hosting server port
-        let response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
+        // Wired directly to your PythonAnywhere server!
+        let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ raw_data: dumpedCode })
@@ -261,30 +261,24 @@
         
         if (result.status === "success" && result.links.length > 0) {
           result.links.forEach((link) => {
-            // Build the Premium Card
             let card = document.createElement('div');
             card.className = "media-card";
 
-            // Build the Image/Video Preview
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
             if (link.includes('.mp4')) {
-              // If it's a video, show a cool play button placeholder
               preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video File</div>`;
             } else {
-              // If it's a photo, show the actual image
               preview.innerHTML = `<img src="${link}" />`;
             }
             
-            // Build the Blue Download Button
             let dlBtn = document.createElement('a');
             dlBtn.href = link;
             dlBtn.target = "_blank"; 
             dlBtn.className = "download-link";
             dlBtn.innerText = "⬇ Download";
 
-            // Put it all together in the grid
             card.appendChild(preview);
             card.appendChild(dlBtn);
             resultDiv.appendChild(card);
@@ -293,7 +287,7 @@
           resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure your Bot-Hosting panel is running!</p>`;
+        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure PythonAnywhere is running!</p>`;
       }
     }
   </script>
