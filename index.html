@@ -212,6 +212,35 @@
       document.getElementById('results').innerHTML = '';
     }
 
+    function isVideoUrl(url) {
+      return url.includes('.mp4') || /\/video\/|\/v\/|video_dashinit/.test(url);
+    }
+
+    async function downloadMedia(url, index) {
+      try {
+        let resp = await fetch(url, { referrerPolicy: 'no-referrer' });
+        let blob = await resp.blob();
+        let ext = isVideoUrl(url) ? 'mp4' : 'jpg';
+        let contentType = resp.headers.get('Content-Type');
+        if (contentType) {
+          if (contentType.includes('png')) ext = 'png';
+          else if (contentType.includes('webp')) ext = 'webp';
+          else if (contentType.includes('mp4') || contentType.includes('video')) ext = 'mp4';
+        }
+        let blobUrl = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'ig_media_' + (index + 1) + '.' + ext;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        console.error('Download failed, opening in new tab:', e);
+        window.open(url, '_blank');
+      }
+    }
+
     function generateSource() {
       let link = document.getElementById('igLink').value;
       if (link.includes('/stories/')) {
@@ -257,14 +286,14 @@
         resultDiv.innerHTML = ""; 
         
         if (result.status === "success" && result.links.length > 0) {
-          result.links.forEach((link) => {
+          result.links.forEach((link, index) => {
             let card = document.createElement('div');
             card.className = "media-card";
 
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
-            if (link.includes('.mp4')) {
+            if (isVideoUrl(link)) {
               preview.innerHTML = `<video src="${link}" controls playsinline referrerpolicy="no-referrer"></video>`;
             } else {
               let img = document.createElement('img');
@@ -281,10 +310,13 @@
             }
             
             let dlBtn = document.createElement('a');
-            dlBtn.href = link;
-            dlBtn.target = "_blank"; 
+            dlBtn.href = "#";
             dlBtn.className = "download-link";
             dlBtn.innerText = "⬇ Download";
+            dlBtn.addEventListener('click', function(e) {
+              e.preventDefault();
+              downloadMedia(link, index);
+            });
 
             card.appendChild(preview);
             card.appendChild(dlBtn);
