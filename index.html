@@ -6,12 +6,17 @@
   <title>J.L Downloader</title>
   <style>
     /* Premium Modern Dark Theme */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
       background-color: #0f0f11; 
       color: #ffffff; 
-      padding: 20px; 
+      padding: 40px 20px; 
       margin: 0;
+      min-height: 100vh;
     }
     
     .container {
@@ -19,91 +24,236 @@
       margin: 0 auto;
     }
 
-    h2 {
+    .header {
       text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header-icon {
+      font-size: 40px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    h1 {
       font-size: 28px;
       background: linear-gradient(90deg, #0095f6, #e1306c);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 30px;
+      margin: 0 0 6px;
+    }
+
+    .header-subtitle {
+      font-size: 13px;
+      color: #666;
+      margin: 0;
+    }
+
+    /* Step Block */
+    .step-block {
+      margin-bottom: 24px;
     }
 
     .step-label {
-      font-size: 14px;
-      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
       color: #aaa;
-      margin-bottom: 8px;
-      display: block;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    input, textarea, button { 
-      width: 100%; 
-      margin-bottom: 25px; 
-      padding: 15px; 
-      border-radius: 12px; 
-      border: 1px solid #333; 
-      box-sizing: border-box; 
-      font-size: 15px; 
-      background-color: #1a1a1d;
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #0095f6, #e1306c);
+      font-size: 11px;
+      font-weight: 700;
       color: #fff;
-      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    /* Inputs */
+    input, textarea { 
+      width: 100%; 
+      padding: 14px 16px; 
+      border-radius: 12px; 
+      border: 1px solid #2a2a2e; 
+      font-size: 14px; 
+      background-color: #18181b;
+      color: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      display: block;
     }
 
     input:focus, textarea:focus {
       outline: none;
       border-color: #0095f6;
-      box-shadow: 0 0 8px rgba(0, 149, 246, 0.3);
+      box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.15);
     }
 
-    input[readonly] { 
-      background-color: #121215; 
-      color: #888; 
+    /* Source link row */
+    .source-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .source-row input {
+      flex: 1;
+      min-width: 0;
+      background-color: #111113;
+      color: #888;
       border-color: #222;
+      cursor: default;
+    }
+
+    .btn-copy {
+      flex-shrink: 0;
+      padding: 0 16px;
+      border-radius: 12px;
+      border: 1px solid #2a2a2e;
+      background-color: #1e1e24;
+      color: #aaa;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+      border-color: #0095f6;
+      color: #0095f6;
+      background-color: rgba(0, 149, 246, 0.08);
+    }
+
+    .btn-copy.copied {
+      border-color: #22c55e;
+      color: #22c55e;
+      background-color: rgba(34, 197, 94, 0.08);
     }
 
     textarea { 
       height: 120px; 
-      resize: none; 
-      font-family: monospace;
-      font-size: 13px;
+      resize: vertical; 
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
     }
 
+    /* Main button */
     .btn-main { 
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
       background: linear-gradient(90deg, #0095f6, #007bb5); 
       color: white; 
-      font-weight: bold; 
-      font-size: 18px; 
+      font-weight: 700; 
+      font-size: 16px; 
       cursor: pointer; 
-      border: none;
-      box-shadow: 0 4px 15px rgba(0, 149, 246, 0.4);
+      box-shadow: 0 4px 20px rgba(0, 149, 246, 0.35);
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      letter-spacing: 0.02em;
+      margin-top: 4px;
+    }
+
+    .btn-main:hover {
+      opacity: 0.92;
+      box-shadow: 0 6px 24px rgba(0, 149, 246, 0.5);
     }
 
     .btn-main:active {
       transform: scale(0.98);
     }
 
-    /* --- The Magic Grid Layout --- */
-    #results { 
-      display: grid; 
-      grid-template-columns: repeat(2, 1fr); /* 2 columns exactly like SaveClip */
-      gap: 15px; 
-      margin-top: 20px; 
+    .btn-main:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
     }
 
-    .media-card { 
-      background: #1e1e24; 
-      border-radius: 12px; 
-      overflow: hidden; 
-      border: 1px solid #333;
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid #1e1e24;
+      margin: 28px 0;
+    }
+
+    /* Results grid */
+    #results { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px; 
+      margin-top: 8px;
+    }
+
+    /* Loading state */
+    .loading-state {
+      grid-column: span 2;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      align-items: center;
+      gap: 12px;
+      padding: 32px 0;
+      color: #888;
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #2a2a2e;
+      border-top-color: #0095f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty / Error state */
+    .state-message {
+      grid-column: span 2;
+      text-align: center;
+      padding: 24px 0;
+      font-size: 14px;
+    }
+
+    .state-message.error {
+      color: #f87171;
+    }
+
+    /* Media card */
+    .media-card { 
+      background: #18181b; 
+      border-radius: 12px; 
+      overflow: hidden; 
+      border: 1px solid #2a2a2e;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .media-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
     }
 
     .preview-container {
       width: 100%;
       height: 160px;
-      background: #000;
+      background: #111113;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -114,16 +264,34 @@
     .preview-container img { 
       width: 100%; 
       height: 100%; 
-      object-fit: cover; 
+      object-fit: cover;
+      display: block;
     }
 
     .video-placeholder {
-      text-align: center;
-      color: #aaa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: #555;
     }
 
-    .video-placeholder span {
-      font-size: 40px;
+    .video-placeholder .play-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(0, 149, 246, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .video-placeholder .type-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
     }
 
     .download-link { 
@@ -133,115 +301,195 @@
       color: white; 
       text-decoration: none; 
       font-weight: 600; 
-      font-size: 14px;
+      font-size: 13px;
       text-align: center;
       transition: background 0.2s;
+      letter-spacing: 0.02em;
     }
 
     .download-link:hover {
       background: #007bb5;
     }
+
+    /* Input hint text */
+    .input-hint {
+      font-size: 11px;
+      color: #555;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>J.L Downloader</h2>
-    
-    <label class="step-label">Step 1: Paste IG Link (Post, Reel, or Story)</label>
-    <input id="igLink" type="text" placeholder="https://instagram.com/..." oninput="generateSource()">
-    
-    <label class="step-label">Step 2: Copy this & open in new tab</label>
-    <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
-    
-    <label class="step-label">Step 3: Paste raw code/JSON here</label>
-    <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
-    
-    <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
 
+    <header class="header">
+      <span class="header-icon">📥</span>
+      <h1>J.L Downloader</h1>
+      <p class="header-subtitle">Download Instagram posts, reels, and stories</p>
+    </header>
+
+    <!-- Step 1 -->
+    <div class="step-block">
+      <span class="step-label">
+        <span class="step-badge">1</span>
+        Paste Instagram link
+      </span>
+      <input id="igLink" type="text" placeholder="https://www.instagram.com/p/..." oninput="generateSource()" autocomplete="off" spellcheck="false">
+      <p class="input-hint">Supports posts, reels, and stories</p>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-block">
+      <span class="step-label">
+        <span class="step-badge">2</span>
+        Open this URL in a new tab &amp; copy the page source
+      </span>
+      <div class="source-row">
+        <input id="sourceLink" type="text" readonly placeholder="Waiting for a valid link...">
+        <button class="btn-copy" id="copyBtn" onclick="copySource()" title="Copy to clipboard">Copy</button>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-block">
+      <span class="step-label">
+        <span class="step-badge">3</span>
+        Paste the page source here
+      </span>
+      <textarea id="rawCode" placeholder="Paste the raw page source or JSON here..."></textarea>
+    </div>
+
+    <button class="btn-main" id="scanBtn" onclick="sendToBackend()">Scan for Media</button>
+
+    <hr class="divider" id="resultsDivider" style="display:none;">
     <div id="results"></div>
+
   </div>
 
   <script>
     function generateSource() {
-      let link = document.getElementById('igLink').value;
-      if (link.includes('/stories/')) {
-        document.getElementById('sourceLink').value = "view-source:" + link;
+      const link = document.getElementById('igLink').value.trim();
+      const output = document.getElementById('sourceLink');
+      const copyBtn = document.getElementById('copyBtn');
+
+      copyBtn.textContent = 'Copy';
+      copyBtn.classList.remove('copied');
+
+      if (!link) {
+        output.value = '';
         return;
       }
-      let shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
-      if(shortcodeMatch && shortcodeMatch[1]) {
-        let variables = JSON.stringify({
-            "shortcode": shortcodeMatch[1],
-            "fetch_tagged_user_count": null,
-            "hoisted_comment_id": null,
-            "hoisted_reply_id": null
+
+      if (link.includes('/stories/')) {
+        output.value = 'view-source:' + link;
+        return;
+      }
+
+      const shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+      if (shortcodeMatch && shortcodeMatch[1]) {
+        const variables = JSON.stringify({
+          shortcode: shortcodeMatch[1],
+          fetch_tagged_user_count: null,
+          hoisted_comment_id: null,
+          hoisted_reply_id: null
         });
-        let encodedVars = encodeURIComponent(variables);
-        document.getElementById('sourceLink').value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodedVars}`;
-      } else if (link.length > 0) {
-        document.getElementById('sourceLink').value = "Bruh, drop a real IG link...";
+        output.value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodeURIComponent(variables)}`;
       } else {
-        document.getElementById('sourceLink').value = "";
+        output.value = 'Please enter a valid Instagram post, reel, or story link.';
       }
     }
 
+    function copySource() {
+      const val = document.getElementById('sourceLink').value;
+      if (!val || (!val.startsWith('http') && !val.startsWith('view-source:'))) return;
+
+      navigator.clipboard.writeText(val).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Failed';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+
     async function sendToBackend() {
-      let dumpedCode = document.getElementById('rawCode').value;
-      let resultDiv = document.getElementById('results');
-      
+      const dumpedCode = document.getElementById('rawCode').value.trim();
+      const resultDiv = document.getElementById('results');
+      const divider = document.getElementById('resultsDivider');
+      const scanBtn = document.getElementById('scanBtn');
+
       if (!dumpedCode) {
-        alert("You gotta paste the raw code in Box 3 first bro!");
+        resultDiv.innerHTML = '';
+        divider.style.display = 'none';
+        alert('Please paste the raw page source into Step 3 before scanning.');
         return;
       }
 
-      resultDiv.innerHTML = "<p style='grid-column: span 2; text-align: center;'>Scanning code... ⏳</p>";
+      // Show loading state
+      divider.style.display = 'block';
+      scanBtn.disabled = true;
+      resultDiv.innerHTML = `
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <span>Scanning for media...</span>
+        </div>`;
 
       try {
-        // Connected directly to your Bot-Hosting server port
-        let response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
+        const response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ raw_data: dumpedCode })
         });
-        
-        let result = await response.json();
-        resultDiv.innerHTML = ""; 
-        
-        if (result.status === "success" && result.links.length > 0) {
+
+        const result = await response.json();
+        resultDiv.innerHTML = '';
+
+        if (result.status === 'success' && result.links.length > 0) {
           result.links.forEach((link) => {
-            // Build the Premium Card
-            let card = document.createElement('div');
-            card.className = "media-card";
+            const card = document.createElement('div');
+            card.className = 'media-card';
 
-            // Build the Image/Video Preview
-            let preview = document.createElement('div');
-            preview.className = "preview-container";
-            
+            const preview = document.createElement('div');
+            preview.className = 'preview-container';
+
             if (link.includes('.mp4')) {
-              // If it's a video, show a cool play button placeholder
-              preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video File</div>`;
+              preview.innerHTML = `
+                <div class="video-placeholder">
+                  <div class="play-icon">▶</div>
+                  <span class="type-label">Video</span>
+                </div>`;
             } else {
-              // If it's a photo, show the actual image
-              preview.innerHTML = `<img src="${link}" />`;
+              const img = document.createElement('img');
+              img.src = link;
+              img.alt = 'Media preview';
+              img.loading = 'lazy';
+              preview.appendChild(img);
             }
-            
-            // Build the Blue Download Button
-            let dlBtn = document.createElement('a');
-            dlBtn.href = link;
-            dlBtn.target = "_blank"; 
-            dlBtn.className = "download-link";
-            dlBtn.innerText = "⬇ Download";
 
-            // Put it all together in the grid
+            const dlBtn = document.createElement('a');
+            dlBtn.href = link;
+            dlBtn.target = '_blank';
+            dlBtn.rel = 'noopener noreferrer';
+            dlBtn.className = 'download-link';
+            dlBtn.textContent = '⬇ Download';
+
             card.appendChild(preview);
             card.appendChild(dlBtn);
             resultDiv.appendChild(card);
           });
         } else {
-          resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
+          resultDiv.innerHTML = `<p class="state-message error">${result.message || 'No media found.'}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure your Bot-Hosting panel is running!</p>`;
+        resultDiv.innerHTML = `<p class="state-message error">Could not reach the server. Please make sure the backend is running and try again.</p>`;
+      } finally {
+        scanBtn.disabled = false;
       }
     }
   </script>
