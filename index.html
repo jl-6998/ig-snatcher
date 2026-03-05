@@ -257,11 +257,14 @@
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
-            // THE UPGRADE: Added 'referrerpolicy="no-referrer"' to bypass IG blocks, and added a real video player!
+            // THE NEW PROXY AND AUTO-PLAY VIDEO LOGIC
             if (link.includes('.mp4')) {
-              preview.innerHTML = `<video src="${link}" controls referrerpolicy="no-referrer"></video>`;
+              // Videos autoplay silently on loop for a clean thumbnail effect
+              preview.innerHTML = `<video src="${link}" autoplay loop muted playsinline referrerpolicy="no-referrer"></video>`;
             } else {
-              preview.innerHTML = `<img src="${link}" referrerpolicy="no-referrer" />`;
+              // Images bounce through a proxy to break Instagram's hotlink blocker
+              let proxyImage = `https://wsrv.nl/?url=${encodeURIComponent(link)}`;
+              preview.innerHTML = `<img src="${proxyImage}" referrerpolicy="no-referrer" />`;
             }
             
             let dlBtn = document.createElement('a');
