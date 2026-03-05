@@ -85,7 +85,7 @@
     /* --- The Magic Grid Layout --- */
     #results { 
       display: grid; 
-      grid-template-columns: repeat(2, 1fr); /* 2 columns exactly like SaveClip */
+      grid-template-columns: repeat(2, 1fr); 
       gap: 15px; 
       margin-top: 20px; 
     }
@@ -111,19 +111,10 @@
       position: relative;
     }
 
-    .preview-container img { 
+    .preview-container img, .preview-container video { 
       width: 100%; 
       height: 100%; 
       object-fit: cover; 
-    }
-
-    .video-placeholder {
-      text-align: center;
-      color: #aaa;
-    }
-
-    .video-placeholder span {
-      font-size: 40px;
     }
 
     .download-link { 
@@ -141,6 +132,50 @@
     .download-link:hover {
       background: #007bb5;
     }
+
+    .btn-clear {
+      background: linear-gradient(90deg, #e1306c, #c13584);
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4);
+    }
+
+    .btn-clear:active {
+      transform: scale(0.98);
+    }
+
+    /* Loading Spinner */
+    .spinner-wrapper {
+      grid-column: span 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 0;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #333;
+      border-top: 4px solid #0095f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .spinner-wrapper p {
+      margin-top: 12px;
+      color: #aaa;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -157,11 +192,19 @@
     <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
     
     <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
+    <button class="btn-clear" onclick="clearAll()">Clear All</button>
 
     <div id="results"></div>
   </div>
 
   <script>
+    function clearAll() {
+      document.getElementById('igLink').value = '';
+      document.getElementById('sourceLink').value = '';
+      document.getElementById('rawCode').value = '';
+      document.getElementById('results').innerHTML = '';
+    }
+
     function generateSource() {
       let link = document.getElementById('igLink').value;
       if (link.includes('/stories/')) {
@@ -194,11 +237,10 @@
         return;
       }
 
-      resultDiv.innerHTML = "<p style='grid-column: span 2; text-align: center;'>Scanning code... ⏳</p>";
+      resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Snatching media... 🕵️‍♂️</p></div>`;
 
       try {
-        // Connected directly to your Bot-Hosting server port
-        let response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
+        let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ raw_data: dumpedCode })
@@ -209,30 +251,25 @@
         
         if (result.status === "success" && result.links.length > 0) {
           result.links.forEach((link) => {
-            // Build the Premium Card
             let card = document.createElement('div');
             card.className = "media-card";
 
-            // Build the Image/Video Preview
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
+            // THE UPGRADE: Added 'referrerpolicy="no-referrer"' to bypass IG blocks, and added a real video player!
             if (link.includes('.mp4')) {
-              // If it's a video, show a cool play button placeholder
-              preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video File</div>`;
+              preview.innerHTML = `<video src="${link}" controls referrerpolicy="no-referrer"></video>`;
             } else {
-              // If it's a photo, show the actual image
-              preview.innerHTML = `<img src="${link}" />`;
+              preview.innerHTML = `<img src="${link}" referrerpolicy="no-referrer" />`;
             }
             
-            // Build the Blue Download Button
             let dlBtn = document.createElement('a');
             dlBtn.href = link;
             dlBtn.target = "_blank"; 
             dlBtn.className = "download-link";
             dlBtn.innerText = "⬇ Download";
 
-            // Put it all together in the grid
             card.appendChild(preview);
             card.appendChild(dlBtn);
             resultDiv.appendChild(card);
@@ -241,7 +278,7 @@
           resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure your Bot-Hosting panel is running!</p>`;
+        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure PythonAnywhere is running!</p>`;
       }
     }
   </script>
