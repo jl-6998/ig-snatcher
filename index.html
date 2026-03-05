@@ -140,6 +140,14 @@
       background: #007bb5;
     }
 
+    .thumbnail-link {
+      background: linear-gradient(90deg, #e1306c, #c13584);
+    }
+
+    .thumbnail-link:hover {
+      background: linear-gradient(90deg, #c13584, #833ab4);
+    }
+
     .btn-clear {
       background: linear-gradient(90deg, #e1306c, #c13584);
       color: white;
@@ -265,7 +273,7 @@
             preview.className = "preview-container";
             
             if (link.includes('.mp4')) {
-              preview.innerHTML = `<video src="${link}" controls playsinline referrerpolicy="no-referrer"></video>`;
+              preview.innerHTML = `<video controls playsinline preload="auto" referrerpolicy="no-referrer"><source src="${link}" type="video/mp4"></video>`;
             } else {
               let img = document.createElement('img');
               img.src = link;
@@ -288,6 +296,37 @@
 
             card.appendChild(preview);
             card.appendChild(dlBtn);
+
+            if (link.includes('.mp4')) {
+              let thumbBtn = document.createElement('a');
+              thumbBtn.href = "#";
+              thumbBtn.className = "download-link thumbnail-link";
+              thumbBtn.innerText = "🖼 Download Thumbnail";
+              thumbBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                let videoEl = card.querySelector('video');
+                if (!videoEl || videoEl.readyState < 2) {
+                  alert('Please wait for the video to load before downloading the thumbnail.');
+                  return;
+                }
+                try {
+                  let canvas = document.createElement('canvas');
+                  canvas.width = videoEl.videoWidth || 640;
+                  canvas.height = videoEl.videoHeight || 360;
+                  canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+                  let a = document.createElement('a');
+                  a.href = canvas.toDataURL('image/png');
+                  a.download = 'thumbnail_' + Date.now() + '.png';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                } catch (err) {
+                  alert('Could not capture thumbnail due to cross-origin restrictions. Try opening the video URL directly.');
+                }
+              });
+              card.appendChild(thumbBtn);
+            }
+
             resultDiv.appendChild(card);
           });
         } else {
