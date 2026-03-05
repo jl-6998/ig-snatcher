@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>J.L Downloader</title>
   <style>
-    /* Premium Modern Dark Theme */
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
       background-color: #0f0f11; 
@@ -68,6 +67,37 @@
       font-size: 13px;
     }
 
+    .source-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 25px;
+    }
+
+    .source-row input {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .btn-copy {
+      flex-shrink: 0;
+      width: auto;
+      padding: 15px 18px;
+      margin-bottom: 0;
+      background-color: #1a1a1d;
+      border: 1px solid #333;
+      border-radius: 12px;
+      color: #aaa;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-copy:hover {
+      border-color: #0095f6;
+      color: #0095f6;
+    }
+
     .btn-main { 
       background: linear-gradient(90deg, #0095f6, #007bb5); 
       color: white; 
@@ -78,14 +108,18 @@
       box-shadow: 0 4px 15px rgba(0, 149, 246, 0.4);
     }
 
+    .btn-main:hover {
+      background: linear-gradient(90deg, #007bb5, #005f8e);
+      box-shadow: 0 4px 20px rgba(0, 149, 246, 0.6);
+    }
+
     .btn-main:active {
       transform: scale(0.98);
     }
 
-    /* --- The Magic Grid Layout --- */
     #results { 
       display: grid; 
-      grid-template-columns: repeat(2, 1fr); /* 2 columns exactly like SaveClip */
+      grid-template-columns: repeat(2, 1fr);
       gap: 15px; 
       margin-top: 20px; 
     }
@@ -147,14 +181,17 @@
   <div class="container">
     <h2>J.L Downloader</h2>
     
-    <label class="step-label">Step 1: Paste IG Link (Post, Reel, or Story)</label>
+    <label class="step-label">Step 1: Paste Instagram link (Post, Reel, or Story)</label>
     <input id="igLink" type="text" placeholder="https://instagram.com/..." oninput="generateSource()">
     
-    <label class="step-label">Step 2: Copy this & open in new tab</label>
-    <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
+    <label class="step-label">Step 2: Open this link in a new tab and copy the page source</label>
+    <div class="source-row">
+      <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
+      <button class="btn-copy" onclick="copySourceLink()" title="Copy to clipboard">⎘</button>
+    </div>
     
-    <label class="step-label">Step 3: Paste raw code/JSON here</label>
-    <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
+    <label class="step-label">Step 3: Paste the raw page source here</label>
+    <textarea id="rawCode" placeholder="Paste the raw page source here..."></textarea>
     
     <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
 
@@ -163,76 +200,82 @@
 
   <script>
     function generateSource() {
-      let link = document.getElementById('igLink').value;
+      const link = document.getElementById('igLink').value;
       if (link.includes('/stories/')) {
         document.getElementById('sourceLink').value = "view-source:" + link;
         return;
       }
-      let shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
-      if(shortcodeMatch && shortcodeMatch[1]) {
-        let variables = JSON.stringify({
-            "shortcode": shortcodeMatch[1],
-            "fetch_tagged_user_count": null,
-            "hoisted_comment_id": null,
-            "hoisted_reply_id": null
+      const shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+      if (shortcodeMatch && shortcodeMatch[1]) {
+        const variables = JSON.stringify({
+          shortcode: shortcodeMatch[1],
+          fetch_tagged_user_count: null,
+          hoisted_comment_id: null,
+          hoisted_reply_id: null
         });
-        let encodedVars = encodeURIComponent(variables);
+        const encodedVars = encodeURIComponent(variables);
         document.getElementById('sourceLink').value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodedVars}`;
       } else if (link.length > 0) {
-        document.getElementById('sourceLink').value = "Bruh, drop a real IG link...";
+        document.getElementById('sourceLink').value = "Please enter a valid Instagram link.";
       } else {
         document.getElementById('sourceLink').value = "";
       }
     }
 
+    function copySourceLink() {
+      const value = document.getElementById('sourceLink').value;
+      if (!value || value === "Please enter a valid Instagram link.") return;
+      navigator.clipboard.writeText(value).catch(() => {
+        // Fallback for browsers that don't support the Clipboard API
+        document.getElementById('sourceLink').select();
+        document.execCommand('copy');
+      });
+    }
+
     async function sendToBackend() {
-      let dumpedCode = document.getElementById('rawCode').value;
-      let resultDiv = document.getElementById('results');
+      const dumpedCode = document.getElementById('rawCode').value;
+      const resultDiv = document.getElementById('results');
       
       if (!dumpedCode) {
-        alert("You gotta paste the raw code in Box 3 first bro!");
+        alert("Please paste the raw page source in Step 3 first.");
         return;
       }
 
-      resultDiv.innerHTML = "<p style='grid-column: span 2; text-align: center;'>Scanning code... ⏳</p>";
+      resultDiv.innerHTML = "<p style='grid-column: span 2; text-align: center;'>Scanning... ⏳</p>";
 
       try {
-        // Connected directly to your Bot-Hosting server port
-        let response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
+        const response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ raw_data: dumpedCode })
         });
         
-        let result = await response.json();
-        resultDiv.innerHTML = ""; 
+        const result = await response.json();
+        resultDiv.innerHTML = "";
         
         if (result.status === "success" && result.links.length > 0) {
           result.links.forEach((link) => {
-            // Build the Premium Card
-            let card = document.createElement('div');
+            const card = document.createElement('div');
             card.className = "media-card";
 
-            // Build the Image/Video Preview
-            let preview = document.createElement('div');
+            const preview = document.createElement('div');
             preview.className = "preview-container";
             
             if (link.includes('.mp4')) {
-              // If it's a video, show a cool play button placeholder
-              preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video File</div>`;
+              preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video</div>`;
             } else {
-              // If it's a photo, show the actual image
-              preview.innerHTML = `<img src="${link}" />`;
+              const img = document.createElement('img');
+              img.src = link;
+              img.alt = "Media preview";
+              preview.appendChild(img);
             }
             
-            // Build the Blue Download Button
-            let dlBtn = document.createElement('a');
+            const dlBtn = document.createElement('a');
             dlBtn.href = link;
-            dlBtn.target = "_blank"; 
+            dlBtn.target = "_blank";
             dlBtn.className = "download-link";
             dlBtn.innerText = "⬇ Download";
 
-            // Put it all together in the grid
             card.appendChild(preview);
             card.appendChild(dlBtn);
             resultDiv.appendChild(card);
@@ -241,7 +284,7 @@
           resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure your Bot-Hosting panel is running!</p>`;
+        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Could not reach the server. Please check that the server is running.</p>`;
       }
     }
   </script>
