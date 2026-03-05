@@ -141,6 +141,50 @@
     .download-link:hover {
       background: #007bb5;
     }
+
+    .btn-clear {
+      background: linear-gradient(90deg, #e1306c, #c13584);
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4);
+    }
+
+    .btn-clear:active {
+      transform: scale(0.98);
+    }
+
+    /* Loading Spinner */
+    .spinner-wrapper {
+      grid-column: span 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 0;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #333;
+      border-top: 4px solid #0095f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .spinner-wrapper p {
+      margin-top: 12px;
+      color: #aaa;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -157,11 +201,19 @@
     <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
     
     <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
+    <button class="btn-clear" onclick="clearAll()">Clear All</button>
 
     <div id="results"></div>
   </div>
 
   <script>
+    function clearAll() {
+      document.getElementById('igLink').value = '';
+      document.getElementById('sourceLink').value = '';
+      document.getElementById('rawCode').value = '';
+      document.getElementById('results').innerHTML = '';
+    }
+
     function generateSource() {
       let link = document.getElementById('igLink').value;
       if (link.includes('/stories/')) {
@@ -194,7 +246,7 @@
         return;
       }
 
-      resultDiv.innerHTML = "<p style='grid-column: span 2; text-align: center;'>Scanning code... ⏳</p>";
+      resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Snatching media... 🕵️‍♂️</p></div>`;
 
       try {
         // Connected directly to your Bot-Hosting server port
