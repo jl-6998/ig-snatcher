@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IG Omni Snatcher</title>
+  <style>
+      body { font-family: sans-serif; background-color: #121212; color: #ffffff; padding: 20px; }
+    input, textarea, button { width: 100%; margin-bottom: 20px; padding: 12px; border-radius: 8px; border: none; box-sizing: border-box; font-size: 16px; }
+    input[readonly] { background-color: #333; color: #aaa; }
+    textarea { height: 100px; resize: none; }
+    .btn-main { background-color: #0095f6; color: white; font-weight: bold; font-size: 18px; cursor: pointer; }
+
+    /* The Grid Layout */
+    #results { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 15px; 
+      margin-top: 20px; 
+    }
+
+    /* Individual Card Style */
+    .media-card { 
+      background: #1e1e1e; 
+      border-radius: 10px; 
+      overflow: hidden; 
+      text-align: center;
+      border: 1px solid #333;
+    }
+
+    .media-card img { 
+      width: 100%; 
+      height: 150px; 
+      object-fit: cover; 
+      background: #000;
+    }
+
+    .download-link { 
+      display: block; 
+      padding: 10px; 
+      background: #0095f6; 
+      color: white; 
+      text-decoration: none; 
+      font-weight: bold; 
+      font-size: 14px;
+    }
+    
+    /* Styles for the new download buttons that will pop up */
+    .download-btn { display: block; width: 100%; padding: 15px; margin-top: 10px; border-radius: 8px; text-align: center; text-decoration: none; font-weight: bold; color: white; box-sizing: border-box; }
+    .btn-video { background-color: #e1306c; } /* IG Pink for videos */
+    .btn-photo { background-color: #f56040; } /* IG Orange for photos */
+  </style>
+</head>
+<body>
+  <h2>Omni IG Snatcher 🕵️‍♂️</h2>
+  
+  <label>Step 1: Paste IG Link (Post, Reel, or Story)</label>
+  <input id="igLink" type="text" placeholder="https://instagram.com/..." oninput="generateSource()">
+  
+  <label>Step 2: Copy this & open in new tab</label>
+  <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
+  
+  <label>Step 3: Paste all that raw code/JSON here</label>
+  <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
+  
+  <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
+
+  <div id="results"></div>
+
+  <script>
+    function generateSource() {
+      let link = document.getElementById('igLink').value;
+      
+      // Upgrade: If it's a story, we use the old view-source trick
+      if (link.includes('/stories/')) {
+        document.getElementById('sourceLink').value = "view-source:" + link;
+        return;
+      }
+      
+      // Upgrade: If it's a regular post or reel, use the clean API trick
+      let shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+      if(shortcodeMatch && shortcodeMatch[1]) {
+        let variables = JSON.stringify({
+            "shortcode": shortcodeMatch[1],
+            "fetch_tagged_user_count": null,
+            "hoisted_comment_id": null,
+            "hoisted_reply_id": null
+        });
+        let encodedVars = encodeURIComponent(variables);
+        document.getElementById('sourceLink').value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodedVars}`;
+      } else if (link.length > 0) {
+        document.getElementById('sourceLink').value = "Bruh, drop a real IG link...";
+      } else {
+        document.getElementById('sourceLink').value = "";
+      }
+    }
+
+    async function sendToBackend() {
+      let dumpedCode = document.getElementById('rawCode').value;
+      let resultDiv = document.getElementById('results');
+      
+      if (!dumpedCode) {
+        alert("You gotta paste the raw code in Box 3 first bro!");
+        return;
+      }
+
+      // Clear out old buttons before scanning
+      resultDiv.innerHTML = "<p>Scanning code... ⏳</p>";
+
+      try {
+        let response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_data: dumpedCode })
+        });
+        
+        let result = await response.json();
+        resultDiv.innerHTML = ""; // Clear the loading text
+        
+        if (result.status === "success" && result.links.length > 0) {
+          // Loop through every link the Python brain found and make a button for it!
+          result.links.forEach((link, index) => {
+            let btn = document.createElement('a');
+            btn.href = link;
+            btn.target = "_blank"; // Opens the media in a new tab so they can save it
+            
+            // If it's an mp4 it gets the pink button, if it's a jpg it gets the orange button
+            if (link.includes('.mp4')) {
+              btn.className = "download-btn btn-video";
+              btn.innerText = `🎬 Open Video ${index + 1}`;
+            } else {
+              btn.className = "download-btn btn-photo";
+              btn.innerText = `📸 Open Photo ${index + 1}`;
+            }
+            
+            resultDiv.appendChild(btn);
+          });
+        } else {
+          resultDiv.innerHTML = `<p style="color: red;">${result.message}</p>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<p style="color: red;">Couldn't reach Pydroid server.</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
