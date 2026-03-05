@@ -102,7 +102,8 @@
 
     .preview-container {
       width: 100%;
-      height: 160px;
+      min-height: 160px;
+      height: auto;
       background: #000;
       display: flex;
       align-items: center;
@@ -111,10 +112,16 @@
       position: relative;
     }
 
-    .preview-container img, .preview-container video { 
+    .preview-container img { 
       width: 100%; 
       height: 100%; 
       object-fit: cover; 
+    }
+
+    .preview-container video { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: contain; 
     }
 
     .download-link { 
@@ -257,14 +264,20 @@
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
-            // THE NEW PROXY AND AUTO-PLAY VIDEO LOGIC
             if (link.includes('.mp4')) {
-              // Videos autoplay silently on loop for a clean thumbnail effect
-              preview.innerHTML = `<video src="${link}" autoplay loop muted playsinline referrerpolicy="no-referrer"></video>`;
+              preview.innerHTML = `<video src="${link}" controls playsinline referrerpolicy="no-referrer"></video>`;
             } else {
-              // Images bounce through a proxy to break Instagram's hotlink blocker
-              let proxyImage = `https://wsrv.nl/?url=${encodeURIComponent(link)}`;
-              preview.innerHTML = `<img src="${proxyImage}" referrerpolicy="no-referrer" />`;
+              let img = document.createElement('img');
+              img.src = link;
+              img.referrerPolicy = 'no-referrer';
+              img.crossOrigin = 'anonymous';
+              img.onerror = function() {
+                if (!this.dataset.retried) {
+                  this.dataset.retried = '1';
+                  this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(link);
+                }
+              };
+              preview.appendChild(img);
             }
             
             let dlBtn = document.createElement('a');
