@@ -111,19 +111,10 @@
       position: relative;
     }
 
-    .preview-container img { 
+    .preview-container img, .preview-container video { 
       width: 100%; 
       height: 100%; 
       object-fit: cover; 
-    }
-
-    .video-placeholder {
-      text-align: center;
-      color: #aaa;
-    }
-
-    .video-placeholder span {
-      font-size: 40px;
     }
 
     .download-link { 
@@ -249,7 +240,6 @@
       resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Snatching media... 🕵️‍♂️</p></div>`;
 
       try {
-        // Wired directly to your PythonAnywhere server!
         let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -267,10 +257,11 @@
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
+            // THE UPGRADE: Added 'referrerpolicy="no-referrer"' to bypass IG blocks, and added a real video player!
             if (link.includes('.mp4')) {
-              preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video File</div>`;
+              preview.innerHTML = `<video src="${link}" controls referrerpolicy="no-referrer"></video>`;
             } else {
-              preview.innerHTML = `<img src="${link}" />`;
+              preview.innerHTML = `<img src="${link}" referrerpolicy="no-referrer" />`;
             }
             
             let dlBtn = document.createElement('a');
