@@ -1,82 +1,173 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IG Omni Snatcher</title>
+  <title>J.L Downloader</title>
   <style>
-      body { font-family: sans-serif; background-color: #121212; color: #ffffff; padding: 20px; }
-    input, textarea, button { width: 100%; margin-bottom: 20px; padding: 12px; border-radius: 8px; border: none; box-sizing: border-box; font-size: 16px; }
-    input[readonly] { background-color: #333; color: #aaa; }
-    textarea { height: 100px; resize: none; }
-    .btn-main { background-color: #0095f6; color: white; font-weight: bold; font-size: 18px; cursor: pointer; }
+    /* Premium Modern Dark Theme */
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background-color: #0f0f11; 
+      color: #ffffff; 
+      padding: 20px; 
+      margin: 0;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
 
-    /* The Grid Layout */
+    h2 {
+      text-align: center;
+      font-size: 28px;
+      background: linear-gradient(90deg, #0095f6, #e1306c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 30px;
+    }
+
+    .step-label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #aaa;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    input, textarea, button { 
+      width: 100%; 
+      margin-bottom: 25px; 
+      padding: 15px; 
+      border-radius: 12px; 
+      border: 1px solid #333; 
+      box-sizing: border-box; 
+      font-size: 15px; 
+      background-color: #1a1a1d;
+      color: #fff;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #0095f6;
+      box-shadow: 0 0 8px rgba(0, 149, 246, 0.3);
+    }
+
+    input[readonly] { 
+      background-color: #121215; 
+      color: #888; 
+      border-color: #222;
+    }
+
+    textarea { 
+      height: 120px; 
+      resize: none; 
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .btn-main { 
+      background: linear-gradient(90deg, #0095f6, #007bb5); 
+      color: white; 
+      font-weight: bold; 
+      font-size: 18px; 
+      cursor: pointer; 
+      border: none;
+      box-shadow: 0 4px 15px rgba(0, 149, 246, 0.4);
+    }
+
+    .btn-main:active {
+      transform: scale(0.98);
+    }
+
+    /* --- The Magic Grid Layout --- */
     #results { 
       display: grid; 
-      grid-template-columns: repeat(2, 1fr); 
+      grid-template-columns: repeat(2, 1fr); /* 2 columns exactly like SaveClip */
       gap: 15px; 
       margin-top: 20px; 
     }
 
-    /* Individual Card Style */
     .media-card { 
-      background: #1e1e1e; 
-      border-radius: 10px; 
+      background: #1e1e24; 
+      border-radius: 12px; 
       overflow: hidden; 
-      text-align: center;
       border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
 
-    .media-card img { 
-      width: 100%; 
-      height: 150px; 
-      object-fit: cover; 
+    .preview-container {
+      width: 100%;
+      height: 160px;
       background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .preview-container img { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+    }
+
+    .video-placeholder {
+      text-align: center;
+      color: #aaa;
+    }
+
+    .video-placeholder span {
+      font-size: 40px;
     }
 
     .download-link { 
       display: block; 
-      padding: 10px; 
+      padding: 12px; 
       background: #0095f6; 
       color: white; 
       text-decoration: none; 
-      font-weight: bold; 
+      font-weight: 600; 
       font-size: 14px;
+      text-align: center;
+      transition: background 0.2s;
     }
-    
-    /* Styles for the new download buttons that will pop up */
-    .download-btn { display: block; width: 100%; padding: 15px; margin-top: 10px; border-radius: 8px; text-align: center; text-decoration: none; font-weight: bold; color: white; box-sizing: border-box; }
-    .btn-video { background-color: #e1306c; } /* IG Pink for videos */
-    .btn-photo { background-color: #f56040; } /* IG Orange for photos */
+
+    .download-link:hover {
+      background: #007bb5;
+    }
   </style>
 </head>
 <body>
-  <h2>Omni IG Snatcher 🕵️‍♂️</h2>
-  
-  <label>Step 1: Paste IG Link (Post, Reel, or Story)</label>
-  <input id="igLink" type="text" placeholder="https://instagram.com/..." oninput="generateSource()">
-  
-  <label>Step 2: Copy this & open in new tab</label>
-  <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
-  
-  <label>Step 3: Paste all that raw code/JSON here</label>
-  <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
-  
-  <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
+  <div class="container">
+    <h2>J.L Downloader</h2>
+    
+    <label class="step-label">Step 1: Paste IG Link (Post, Reel, or Story)</label>
+    <input id="igLink" type="text" placeholder="https://instagram.com/..." oninput="generateSource()">
+    
+    <label class="step-label">Step 2: Copy this & open in new tab</label>
+    <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
+    
+    <label class="step-label">Step 3: Paste raw code/JSON here</label>
+    <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
+    
+    <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
 
-  <div id="results"></div>
+    <div id="results"></div>
+  </div>
 
   <script>
     function generateSource() {
       let link = document.getElementById('igLink').value;
-      
-      // Upgrade: If it's a story, we use the old view-source trick
       if (link.includes('/stories/')) {
         document.getElementById('sourceLink').value = "view-source:" + link;
         return;
       }
-      
-      // Upgrade: If it's a regular post or reel, use the clean API trick
       let shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
       if(shortcodeMatch && shortcodeMatch[1]) {
         let variables = JSON.stringify({
@@ -103,10 +194,10 @@
         return;
       }
 
-      // Clear out old buttons before scanning
-      resultDiv.innerHTML = "<p>Scanning code... ⏳</p>";
+      resultDiv.innerHTML = "<p style='grid-column: span 2; text-align: center;'>Scanning code... ⏳</p>";
 
       try {
+        // Connected directly to your Bot-Hosting server port
         let response = await fetch('http://de1.bot-hosting.net:21564/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -114,31 +205,43 @@
         });
         
         let result = await response.json();
-        resultDiv.innerHTML = ""; // Clear the loading text
+        resultDiv.innerHTML = ""; 
         
         if (result.status === "success" && result.links.length > 0) {
-          // Loop through every link the Python brain found and make a button for it!
-          result.links.forEach((link, index) => {
-            let btn = document.createElement('a');
-            btn.href = link;
-            btn.target = "_blank"; // Opens the media in a new tab so they can save it
+          result.links.forEach((link) => {
+            // Build the Premium Card
+            let card = document.createElement('div');
+            card.className = "media-card";
+
+            // Build the Image/Video Preview
+            let preview = document.createElement('div');
+            preview.className = "preview-container";
             
-            // If it's an mp4 it gets the pink button, if it's a jpg it gets the orange button
             if (link.includes('.mp4')) {
-              btn.className = "download-btn btn-video";
-              btn.innerText = `🎬 Open Video ${index + 1}`;
+              // If it's a video, show a cool play button placeholder
+              preview.innerHTML = `<div class="video-placeholder"><span>▶️</span><br>Video File</div>`;
             } else {
-              btn.className = "download-btn btn-photo";
-              btn.innerText = `📸 Open Photo ${index + 1}`;
+              // If it's a photo, show the actual image
+              preview.innerHTML = `<img src="${link}" />`;
             }
             
-            resultDiv.appendChild(btn);
+            // Build the Blue Download Button
+            let dlBtn = document.createElement('a');
+            dlBtn.href = link;
+            dlBtn.target = "_blank"; 
+            dlBtn.className = "download-link";
+            dlBtn.innerText = "⬇ Download";
+
+            // Put it all together in the grid
+            card.appendChild(preview);
+            card.appendChild(dlBtn);
+            resultDiv.appendChild(card);
           });
         } else {
-          resultDiv.innerHTML = `<p style="color: red;">${result.message}</p>`;
+          resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="color: red;">Couldn't reach Pydroid server.</p>`;
+        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure your Bot-Hosting panel is running!</p>`;
       }
     }
   </script>
