@@ -3,51 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>J.L Downloader</title>
+  <title>J.L Premium Downloader</title>
   <style>
     /* Premium Modern Dark Theme */
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f0f11; color: #ffffff; padding: 20px; margin: 0; }
     .container { max-width: 600px; margin: 0 auto; }
     h2 { text-align: center; font-size: 28px; background: linear-gradient(90deg, #0095f6, #e1306c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px; }
     .step-label { font-size: 14px; font-weight: bold; color: #aaa; margin-bottom: 8px; display: block; }
-    input, textarea, button { width: 100%; margin-bottom: 25px; padding: 15px; border-radius: 12px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; background-color: #1a1a1d; color: #fff; transition: all 0.3s ease; }
-    input:focus, textarea:focus { outline: none; border-color: #0095f6; box-shadow: 0 0 8px rgba(0, 149, 246, 0.3); }
-    input[readonly] { background-color: #121215; color: #888; border-color: #222; }
-    textarea { height: 120px; resize: none; font-family: monospace; font-size: 13px; }
+    input, button { width: 100%; margin-bottom: 25px; padding: 15px; border-radius: 12px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; background-color: #1a1a1d; color: #fff; transition: all 0.3s ease; }
+    input:focus { outline: none; border-color: #0095f6; box-shadow: 0 0 8px rgba(0, 149, 246, 0.3); }
     .btn-main { background: linear-gradient(90deg, #0095f6, #007bb5); color: white; font-weight: bold; font-size: 18px; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(0, 149, 246, 0.4); }
     .btn-main:active { transform: scale(0.98); }
-    #results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
-    .media-card { background: #1e1e24; border-radius: 12px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-    .preview-container { width: 100%; min-height: 160px; height: auto; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-    .preview-container img { width: 100%; height: 100%; object-fit: cover; }
-    .preview-container video { width: 100%; height: 100%; object-fit: contain; }
-    .action-row { display: flex; width: 100%; border-top: 1px solid #333; }
-    .download-link { flex: 1; padding: 12px 5px; background: #0095f6; color: white; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; transition: background 0.2s; border: none; cursor: pointer; }
-    .download-link:first-child { border-right: 1px solid #1e1e24; }
-    .download-link:hover { background: #007bb5; }
     .btn-clear { background: linear-gradient(90deg, #e1306c, #c13584); color: white; font-weight: bold; font-size: 16px; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4); }
     .btn-clear:active { transform: scale(0.98); }
-    .spinner-wrapper { grid-column: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 0; }
+    
+    .spinner-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 0; }
     .spinner { width: 48px; height: 48px; border: 4px solid #333; border-top: 4px solid #0095f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .spinner-wrapper p { margin-top: 12px; color: #aaa; font-size: 14px; }
+    
+    #results { margin-top: 20px; }
+    .raw-dump { height: 300px; width: 100%; background: #121215; color: #00ff00; font-family: monospace; font-size: 12px; border: 1px solid #333; padding: 10px; border-radius: 8px; overflow-y: scroll; resize: none; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>J.L Downloader</h2>
+    <h2>J.L Premium Downloader</h2>
     
-    <label class="step-label">Step 1: Paste IG Link (Post, Reel, or Story)</label>
-    <input id="igLink" type="text" placeholder="https://instagram.com/..." oninput="generateSource()">
+    <label class="step-label">Paste IG Link (Post, Reel, or Story)</label>
+    <input id="igLink" type="text" placeholder="https://instagram.com/...">
     
-    <label class="step-label">Step 2: Copy this & open in new tab</label>
-    <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
-    
-    <label class="step-label">Step 3: Paste raw code/JSON here</label>
-    <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
-    
-    <button class="btn-main" onclick="sendToBackend()">Scan For Media</button>
-    <button class="btn-clear" onclick="clearAll()">Clear All</button>
+    <button class="btn-main" onclick="sendToBackend()">Download Media</button>
+    <button class="btn-clear" onclick="clearAll()">Clear</button>
 
     <div id="results"></div>
   </div>
@@ -55,145 +42,38 @@
   <script>
     function clearAll() {
       document.getElementById('igLink').value = '';
-      document.getElementById('sourceLink').value = '';
-      document.getElementById('rawCode').value = '';
       document.getElementById('results').innerHTML = '';
     }
 
-    function generateSource() {
-      let link = document.getElementById('igLink').value;
-      if (link.includes('/stories/')) {
-        document.getElementById('sourceLink').value = "view-source:" + link;
-        return;
-      }
-      let shortcodeMatch = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
-      if(shortcodeMatch && shortcodeMatch[1]) {
-        let variables = JSON.stringify({
-            "shortcode": shortcodeMatch[1],
-            "fetch_tagged_user_count": null,
-            "hoisted_comment_id": null,
-            "hoisted_reply_id": null
-        });
-        let encodedVars = encodeURIComponent(variables);
-        document.getElementById('sourceLink').value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodedVars}`;
-      } else if (link.length > 0) {
-        document.getElementById('sourceLink').value = "Bruh, drop a real IG link...";
-      } else {
-        document.getElementById('sourceLink').value = "";
-      }
-    }
-
     async function sendToBackend() {
-      let dumpedCode = document.getElementById('rawCode').value;
+      let link = document.getElementById('igLink').value;
       let resultDiv = document.getElementById('results');
       
-      if (!dumpedCode) {
-        alert("You gotta paste the raw code in Box 3 first bro!");
+      if (!link) {
+        alert("Drop the IG link first, bro!");
         return;
       }
 
-      resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Snatching media... 🕵️‍♂️</p></div>`;
+      resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Hitting the Premium Servers... 🚀</p></div>`;
 
       try {
         let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ raw_data: dumpedCode })
+          body: JSON.stringify({ link: link })
         });
         
         let result = await response.json();
-        resultDiv.innerHTML = ""; 
         
-        if (result.status === "success" && result.links.length > 0) {
-          result.links.forEach((link) => {
-            let card = document.createElement('div');
-            card.className = "media-card";
-
-            // 1. Setup the Preview with your wsrv.nl fallback trick!
-            let preview = document.createElement('div');
-            preview.className = "preview-container";
-            
-            if (link.includes('.mp4')) {
-              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer"><source src="${link}" type="video/mp4"></video>`;
-            } else {
-              let img = document.createElement('img');
-              img.src = link;
-              img.referrerPolicy = 'no-referrer';
-              img.onerror = function() {
-                if (!this.dataset.retried) {
-                  this.dataset.retried = '1';
-                  this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(link);
-                }
-              };
-              preview.appendChild(img);
-            }
-            
-            // 2. Setup the Action Buttons
-            let actionRow = document.createElement('div');
-            actionRow.className = "action-row";
-
-            // The View Button (noopener strips your site data so IG doesn't block it)
-            let viewBtn = document.createElement('a');
-            viewBtn.href = link;
-            viewBtn.target = "_blank"; 
-            viewBtn.rel = "noopener noreferrer"; 
-            viewBtn.className = "download-link";
-            viewBtn.innerText = "👁️ View";
-
-            // The Save Button
-            let dlBtn = document.createElement('a');
-            dlBtn.href = "#";
-            dlBtn.className = "download-link";
-            dlBtn.innerText = "⬇️ Save";
-            
-            dlBtn.onclick = async function(e) {
-              e.preventDefault();
-              
-              // If it's a video, bypass the proxy paywall and open directly
-              if (link.includes('.mp4')) {
-                alert("Videos are too heavy for the silent proxy, bro. It's gonna open the raw video now—just tap the 3 dots in the bottom corner and hit 'Download'!");
-                window.open(link, '_blank', 'noopener,noreferrer');
-                return;
-              }
-
-              // If it's an image, run the proxy finesse
-              let originalText = dlBtn.innerText;
-              dlBtn.innerText = "⏳ Pulling...";
-              
-              try {
-                let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(link);
-                let res = await fetch(proxyUrl);
-                let blob = await res.blob();
-                
-                let blobUrl = window.URL.createObjectURL(blob);
-                let a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = `JL_Image_${Date.now()}.jpg`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(blobUrl);
-                
-                dlBtn.innerText = "✅ Saved!";
-                setTimeout(() => dlBtn.innerText = originalText, 3000);
-              } catch (err) {
-                alert("Proxy timed out! Just hit the 'View' button to open it and save it manually.");
-                dlBtn.innerText = originalText;
-              }
-            };
-
-            actionRow.appendChild(viewBtn);
-            actionRow.appendChild(dlBtn);
-
-            card.appendChild(preview);
-            card.appendChild(actionRow);
-            resultDiv.appendChild(card);
-          });
+        if (result.status === "success") {
+          // This dumps the green JSON code on the screen so we can map it
+          resultDiv.innerHTML = `<textarea class="raw-dump" readonly>${JSON.stringify(result.raw_data, null, 2)}</textarea>
+                                 <p style="text-align:center; color: #aaa; margin-top: 10px;">Screenshot this text so we can build the final video card!</p>`;
         } else {
-          resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
+          resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4d;">${result.message}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure PythonAnywhere is running!</p>`;
+        resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure PythonAnywhere is running!</p>`;
       }
     }
   </script>
