@@ -16,7 +16,7 @@
     .step-label { font-size: 14px; font-weight: bold; color: #aaa; margin-bottom: 8px; display: block; }
     input, textarea, button { width: 100%; margin-bottom: 20px; padding: 15px; border-radius: 12px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; background-color: #1a1a1d; color: #fff; }
     input:focus, textarea:focus { outline: none; border-color: #0095f6; }
-    input[readonly] { background-color: #121215; color: #00ff00; border-color: #222; font-weight: bold; text-align: center;}
+    input[readonly] { background-color: #121215; color: #00ff00; border-color: #222; font-weight: bold; text-align: left; font-size: 13px; }
     textarea { height: 120px; resize: none; font-family: monospace; font-size: 13px; }
     
     .btn-main { background: linear-gradient(90deg, #0095f6, #007bb5); color: white; font-weight: bold; font-size: 18px; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(0, 149, 246, 0.4); }
@@ -62,8 +62,11 @@
       <label class="step-label">Step 1: Paste Private IG Link</label>
       <input id="privateLink" type="text" placeholder="https://instagram.com/p/..." oninput="generateSource()">
       
-      <label class="step-label">Step 2: Link auto-copies! Open in a new tab</label>
-      <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
+      <label class="step-label">Step 2: Generate & Copy Link</label>
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <input id="sourceLink" type="text" readonly placeholder="Waiting for link..." style="margin-bottom: 0;">
+        <button class="btn-main" style="margin-bottom: 0; width: auto; padding: 0 20px; font-size: 15px;" onclick="copySource()">📋 Copy</button>
+      </div>
       
       <label class="step-label">Step 3: Paste raw JSON code here</label>
       <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
@@ -96,29 +99,40 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    // Auto-Copy GraphQL Link
+    // Step 2 Link Generator
     function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
-      let finalLink = "";
+
+      if (!link) { targetInput.value = ""; return; }
 
       if (link.includes('/stories/')) {
-        finalLink = "view-source:" + link;
+        targetInput.value = "view-source:" + link;
       } else {
         let match = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
         if(match && match[1]) {
           let vars = JSON.stringify({"shortcode": match[1], "fetch_tagged_user_count": null, "hoisted_comment_id": null, "hoisted_reply_id": null});
-          finalLink = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
+          targetInput.value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
         } else {
-          targetInput.value = ""; return;
+          targetInput.value = "";
         }
       }
+    }
 
-      navigator.clipboard.writeText(finalLink).then(() => {
-          targetInput.value = "✅ Copied! Open in new tab";
-      }).catch(err => {
-          targetInput.value = finalLink; 
-      });
+    // THE FIXED COPY BUTTON
+    function copySource() {
+        let targetInput = document.getElementById('sourceLink');
+        if (!targetInput.value || targetInput.value === "Waiting for link...") {
+            return alert("Drop a link in Step 1 first, twin!");
+        }
+        
+        navigator.clipboard.writeText(targetInput.value).then(() => {
+            let og = targetInput.value;
+            targetInput.value = "✅ Copied to clipboard!";
+            setTimeout(() => targetInput.value = og, 2000);
+        }).catch(err => {
+            alert("Your phone blocked the auto-copy! Just long-press the green text and copy it manually.");
+        });
     }
 
     async function runPublic() {
@@ -159,7 +173,6 @@
           }
 
           if (sourceData) {
-            // THE UPGRADED SCANNER: Catches Reels, Posts, and weird Story formats!
             function dig(obj) {
               if (!obj || typeof obj !== 'object') return;
               
@@ -186,7 +199,14 @@
           let seen = new Set();
           mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
 
-          if(unique.length === 0) return resDiv.innerHTML = `<p style="grid-column: span 2; color: red;">Media not found bro. Account might be private or API missed it.</p>`;
+          // THE DIAGNOSTIC DUMP: If it fails, it prints the exact API code so we can fix it!
+          if(unique.length === 0) {
+              if (result.mode === "public") {
+                 return resDiv.innerHTML = `<div style="grid-column: span 2; color: #ff4d4d; word-break: break-all; font-size: 11px; font-family: monospace; background: #220000; padding: 10px; border-radius: 8px;"><b>API REJECTED IT (Screenshot this):</b><br><br>${JSON.stringify(sourceData)}</div>`;
+              } else {
+                 return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump.</p>`;
+              }
+          }
           
           unique.forEach(media => {
             let card = document.createElement('div'); card.className = "media-card";
@@ -284,10 +304,10 @@
             resDiv.appendChild(card);
           });
         } else {
-          resDiv.innerHTML = `<p style="grid-column: span 2; color: red;">${result.message}</p>`;
+          resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">${result.message}</p>`;
         }
       } catch (e) {
-        resDiv.innerHTML = `<p style="grid-column: span 2; color: red;">Server is dead right now.</p>`;
+        resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Server is dead right now.</p>`;
       }
     }
   </script>
