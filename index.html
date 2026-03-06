@@ -9,7 +9,6 @@
     .container { max-width: 600px; margin: 0 auto; }
     h2 { text-align: center; font-size: 28px; background: linear-gradient(90deg, #0095f6, #e1306c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; }
     
-    /* Toggle Tabs */
     .tab-container { display: flex; justify-content: space-between; margin-bottom: 25px; background: #1a1a1d; border-radius: 12px; padding: 5px; border: 1px solid #333; }
     .tab-btn { flex: 1; padding: 12px; background: transparent; border: none; color: #aaa; font-weight: bold; font-size: 15px; cursor: pointer; border-radius: 8px; transition: 0.3s; }
     .tab-btn.active { background: linear-gradient(90deg, #0095f6, #e1306c); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
@@ -27,16 +26,19 @@
     .section { display: none; }
     .section.active { display: block; }
 
-    /* Results Grid */
     #results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
     .media-card { background: #1e1e24; border-radius: 12px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; }
     .preview-container { width: 100%; min-height: 160px; height: auto; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
     .preview-container img { width: 100%; height: 100%; object-fit: cover; }
     .preview-container video { width: 100%; height: 100%; object-fit: contain; }
-    .action-row { display: flex; width: 100%; border-top: 1px solid #333; }
-    .download-link { flex: 1; padding: 12px 5px; background: #0095f6; color: white; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; border: none; cursor: pointer; }
-    .download-link:first-child { border-right: 1px solid #1e1e24; }
     
+    .action-row { display: flex; width: 100%; border-top: 1px solid #333; }
+    .download-link { flex: 1; padding: 12px 5px; background: #0095f6; color: white; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; border: none; cursor: pointer; border-right: 1px solid #1e1e24;}
+    .download-link:hover { background: #007bb5; }
+    
+    .thumb-btn { background: linear-gradient(90deg, #e1306c, #c13584); display: block; width: 100%; padding: 10px; text-align: center; color: white; text-decoration: none; font-weight: bold; font-size: 14px; border-top: 1px solid #333;}
+    .thumb-btn:hover { background: #c13584; }
+
     .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #0095f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
@@ -75,7 +77,6 @@
   </div>
 
   <script>
-    // Tab Switcher Logic
     function switchMode(mode) {
       document.getElementById('ui-public').classList.remove('active');
       document.getElementById('ui-private').classList.remove('active');
@@ -95,7 +96,7 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    // --- RESTORED AUTO-COPY FOR STEP 2 ---
+    // Auto-Copy GraphQL Link
     function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
@@ -109,34 +110,29 @@
           let vars = JSON.stringify({"shortcode": match[1], "fetch_tagged_user_count": null, "hoisted_comment_id": null, "hoisted_reply_id": null});
           finalLink = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
         } else {
-          targetInput.value = "";
-          return;
+          targetInput.value = ""; return;
         }
       }
 
-      // The Auto-Copy Magic
       navigator.clipboard.writeText(finalLink).then(() => {
           targetInput.value = "✅ Copied! Open in new tab";
       }).catch(err => {
-          targetInput.value = finalLink; // Fallback if phone blocks clipboard
+          targetInput.value = finalLink; 
       });
     }
 
-    // --- EXECUTE PUBLIC DOWNLOAD ---
     async function runPublic() {
       let link = document.getElementById('publicLink').value;
       if(!link) return alert("Drop the link first!");
       await fetchBackend({ link: link });
     }
 
-    // --- EXECUTE PRIVATE DOWNLOAD ---
     async function runPrivate() {
       let code = document.getElementById('rawCode').value;
       if(!code) return alert("Paste the raw code first!");
       await fetchBackend({ raw_data: code });
     }
 
-    // --- THE CORE BRAIN ---
     async function fetchBackend(payload) {
       let resDiv = document.getElementById('results');
       resDiv.innerHTML = `<div style="grid-column: span 2; text-align:center;"><div class="spinner"></div><p>Snatching media... ⏳</p></div>`;
@@ -154,19 +150,31 @@
         if (result.status === "success") {
           let mediaLinks = [];
 
-          // API Parsing
+          // The Smart Dictionary Scanner
+          let sourceData = null;
           if (result.mode === "public") {
+              sourceData = result.raw_data;
+          } else if (result.mode === "private") {
+              try { sourceData = JSON.parse(document.getElementById('rawCode').value); } 
+              catch(e) { sourceData = null; }
+          }
+
+          if (sourceData) {
             function dig(obj) {
               if (!obj || typeof obj !== 'object') return;
-              if (obj.video_url) mediaLinks.push({ type: 'video', url: obj.video_url });
-              else if (obj.display_url) mediaLinks.push({ type: 'image', url: obj.display_url });
+              if (obj.video_url) {
+                  // Grabs the display_url to use as the Video Thumbnail!
+                  let thumb = obj.thumbnail_url || obj.display_url || '';
+                  mediaLinks.push({ type: 'video', url: obj.video_url, thumb: thumb });
+              } else if (obj.display_url && !obj.video_url) {
+                  mediaLinks.push({ type: 'image', url: obj.display_url });
+              }
               for (let key in obj) if (typeof obj[key] === 'object') dig(obj[key]);
             }
-            dig(result.raw_data);
-          } 
-          // Private Dump Parsing
-          else if (result.mode === "private") {
-            mediaLinks = result.links.map(l => ({ type: l.includes('.mp4') ? 'video' : 'image', url: l }));
+            dig(sourceData);
+          } else if (result.mode === "private" && result.links) {
+             // Fallback if it couldn't parse the JSON dump perfectly
+             mediaLinks = result.links.map(l => ({ type: l.includes('.mp4') ? 'video' : 'image', url: l, thumb: '' }));
           }
 
           // Clean Duplicates
@@ -182,7 +190,7 @@
             let preview = document.createElement('div'); preview.className = "preview-container";
             
             if (media.type === 'video') {
-              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer"><source src="${media.url}" type="video/mp4"></video>`;
+              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer" poster="${media.thumb}"><source src="${media.url}" type="video/mp4"></video>`;
             } else {
               let img = document.createElement('img'); img.src = media.url; img.referrerPolicy = 'no-referrer';
               img.onerror = function() { if(!this.dataset.retried){ this.dataset.retried = '1'; this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(media.url); }};
@@ -190,9 +198,11 @@
             }
             
             let row = document.createElement('div'); row.className = "action-row";
+            
+            // 👁️ VIEW BUTTON
             let vBtn = document.createElement('a'); vBtn.href = media.url; vBtn.target = "_blank"; vBtn.className = "download-link"; vBtn.innerText = "👁️ View";
             
-            // --- THE FIXED SAVE BUTTON ---
+            // ⬇️ SAVE BUTTON (With 1-Click Aggressive Hack)
             let dBtn = document.createElement('a'); 
             dBtn.href = "#"; 
             dBtn.className = "download-link"; 
@@ -200,19 +210,25 @@
             
             dBtn.onclick = async (e) => { 
                 e.preventDefault();
+                let originalText = dBtn.innerText;
+                dBtn.innerText = "⏳...";
+
                 if(media.type === 'video') {
-                    // Force opens the video directly to bypass the alert
-                    let a = document.createElement('a');
-                    a.href = media.url;
-                    a.target = "_blank";
-                    a.download = "JL_Video.mp4";
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    // Aggressive 1-Click HTML5 Hack
+                    try {
+                        let a = document.createElement('a');
+                        a.href = media.url + "&dl=1"; // Tricks the CDN
+                        a.setAttribute('download', `JL_Video_${Date.now()}.mp4`);
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        dBtn.innerText = "✅ Force Sent";
+                        setTimeout(() => dBtn.innerText = originalText, 2500);
+                    } catch(err) {
+                        window.open(media.url, '_blank');
+                    }
                 } else {
                     // Silent proxy download for images
-                    let originalText = dBtn.innerText;
-                    dBtn.innerText = "⏳...";
                     try {
                         let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.url);
                         let res = await fetch(proxyUrl);
@@ -221,9 +237,7 @@
                         let a = document.createElement('a');
                         a.href = blobUrl;
                         a.download = `JL_Image_${Date.now()}.jpg`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
                         window.URL.revokeObjectURL(blobUrl);
                         dBtn.innerText = "✅ Saved";
                         setTimeout(() => dBtn.innerText = originalText, 2000);
@@ -234,8 +248,41 @@
                 }
             };
 
-            row.appendChild(vBtn); row.appendChild(dBtn);
-            card.appendChild(preview); card.appendChild(row);
+            row.appendChild(vBtn); 
+            row.appendChild(dBtn);
+            card.appendChild(preview); 
+            card.appendChild(row);
+
+            // 🖼️ THUMBNAIL BUTTON (Only for Videos)
+            if (media.type === 'video' && media.thumb) {
+                let tBtn = document.createElement('a');
+                tBtn.href = "#";
+                tBtn.className = "thumb-btn";
+                tBtn.innerText = "🖼️ Download Thumbnail";
+                tBtn.onclick = async (e) => {
+                    e.preventDefault();
+                    let ogTxt = tBtn.innerText;
+                    tBtn.innerText = "⏳ Pulling Cover...";
+                    try {
+                        let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.thumb);
+                        let res = await fetch(proxyUrl);
+                        let blob = await res.blob();
+                        let blobUrl = window.URL.createObjectURL(blob);
+                        let a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = `JL_Thumbnail_${Date.now()}.jpg`;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        window.URL.revokeObjectURL(blobUrl);
+                        tBtn.innerText = "✅ Saved!";
+                        setTimeout(() => tBtn.innerText = ogTxt, 2000);
+                    } catch(err) {
+                        window.open(media.thumb, '_blank');
+                        tBtn.innerText = ogTxt;
+                    }
+                };
+                card.appendChild(tBtn);
+            }
+
             resDiv.appendChild(card);
           });
         } else {
