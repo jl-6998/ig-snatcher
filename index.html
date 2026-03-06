@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>J.L Ultimate Downloader</title>
+  <title>J.L Downloader</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f0f11; color: #ffffff; padding: 20px; margin: 0; }
     .container { max-width: 600px; margin: 0 auto; }
@@ -17,7 +17,7 @@
     .step-label { font-size: 14px; font-weight: bold; color: #aaa; margin-bottom: 8px; display: block; }
     input, textarea, button { width: 100%; margin-bottom: 20px; padding: 15px; border-radius: 12px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; background-color: #1a1a1d; color: #fff; }
     input:focus, textarea:focus { outline: none; border-color: #0095f6; }
-    input[readonly] { background-color: #121215; color: #888; border-color: #222; }
+    input[readonly] { background-color: #121215; color: #00ff00; border-color: #222; font-weight: bold; text-align: center;}
     textarea { height: 120px; resize: none; font-family: monospace; font-size: 13px; }
     
     .btn-main { background: linear-gradient(90deg, #0095f6, #007bb5); color: white; font-weight: bold; font-size: 18px; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(0, 149, 246, 0.4); }
@@ -43,11 +43,11 @@
 </head>
 <body>
   <div class="container">
-    <h2>J.L Ultimate Downloader</h2>
+    <h2>J.L Downloader</h2>
     
     <div class="tab-container">
-      <button class="tab-btn active" onclick="switchMode('public')" id="tab-public">🌍 Public (1-Click)</button>
-      <button class="tab-btn" onclick="switchMode('private')" id="tab-private">🕵️‍♂️ Private (3-Step)</button>
+      <button class="tab-btn active" onclick="switchMode('public')" id="tab-public">🌍 Public</button>
+      <button class="tab-btn" onclick="switchMode('private')" id="tab-private">🕵️‍♂️ Private</button>
     </div>
 
     <div id="ui-public" class="section active">
@@ -60,7 +60,7 @@
       <label class="step-label">Step 1: Paste Private IG Link</label>
       <input id="privateLink" type="text" placeholder="https://instagram.com/p/..." oninput="generateSource()">
       
-      <label class="step-label">Step 2: Copy this & open in new tab</label>
+      <label class="step-label">Step 2: Link auto-copies! Open in a new tab</label>
       <input id="sourceLink" type="text" readonly placeholder="Waiting for link...">
       
       <label class="step-label">Step 3: Paste raw JSON code here</label>
@@ -95,20 +95,31 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    // Old Step 2 Generator
+    // --- RESTORED AUTO-COPY FOR STEP 2 ---
     function generateSource() {
       let link = document.getElementById('privateLink').value;
+      let targetInput = document.getElementById('sourceLink');
+      let finalLink = "";
+
       if (link.includes('/stories/')) {
-        document.getElementById('sourceLink').value = "view-source:" + link;
-        return;
-      }
-      let match = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
-      if(match && match[1]) {
-        let vars = JSON.stringify({"shortcode": match[1], "fetch_tagged_user_count": null, "hoisted_comment_id": null, "hoisted_reply_id": null});
-        document.getElementById('sourceLink').value = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
+        finalLink = "view-source:" + link;
       } else {
-        document.getElementById('sourceLink').value = "";
+        let match = link.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+        if(match && match[1]) {
+          let vars = JSON.stringify({"shortcode": match[1], "fetch_tagged_user_count": null, "hoisted_comment_id": null, "hoisted_reply_id": null});
+          finalLink = `https://www.instagram.com/graphql/query/?doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
+        } else {
+          targetInput.value = "";
+          return;
+        }
       }
+
+      // The Auto-Copy Magic
+      navigator.clipboard.writeText(finalLink).then(() => {
+          targetInput.value = "✅ Copied! Open in new tab";
+      }).catch(err => {
+          targetInput.value = finalLink; // Fallback if phone blocks clipboard
+      });
     }
 
     // --- EXECUTE PUBLIC DOWNLOAD ---
@@ -143,7 +154,7 @@
         if (result.status === "success") {
           let mediaLinks = [];
 
-          // If it came from Public API, dig through the dictionary
+          // API Parsing
           if (result.mode === "public") {
             function dig(obj) {
               if (!obj || typeof obj !== 'object') return;
@@ -153,7 +164,7 @@
             }
             dig(result.raw_data);
           } 
-          // If it came from Private Dump, just map the links
+          // Private Dump Parsing
           else if (result.mode === "private") {
             mediaLinks = result.links.map(l => ({ type: l.includes('.mp4') ? 'video' : 'image', url: l }));
           }
@@ -180,8 +191,48 @@
             
             let row = document.createElement('div'); row.className = "action-row";
             let vBtn = document.createElement('a'); vBtn.href = media.url; vBtn.target = "_blank"; vBtn.className = "download-link"; vBtn.innerText = "👁️ View";
-            let dBtn = document.createElement('a'); dBtn.href = media.url; dBtn.className = "download-link"; dBtn.innerText = "⬇️ Save";
-            dBtn.onclick = () => { if(media.type === 'video') alert("Tap the 3 dots in the bottom corner of the video to save it!"); };
+            
+            // --- THE FIXED SAVE BUTTON ---
+            let dBtn = document.createElement('a'); 
+            dBtn.href = "#"; 
+            dBtn.className = "download-link"; 
+            dBtn.innerText = "⬇️ Save";
+            
+            dBtn.onclick = async (e) => { 
+                e.preventDefault();
+                if(media.type === 'video') {
+                    // Force opens the video directly to bypass the alert
+                    let a = document.createElement('a');
+                    a.href = media.url;
+                    a.target = "_blank";
+                    a.download = "JL_Video.mp4";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    // Silent proxy download for images
+                    let originalText = dBtn.innerText;
+                    dBtn.innerText = "⏳...";
+                    try {
+                        let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.url);
+                        let res = await fetch(proxyUrl);
+                        let blob = await res.blob();
+                        let blobUrl = window.URL.createObjectURL(blob);
+                        let a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = `JL_Image_${Date.now()}.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(blobUrl);
+                        dBtn.innerText = "✅ Saved";
+                        setTimeout(() => dBtn.innerText = originalText, 2000);
+                    } catch(err) {
+                        window.open(media.url, '_blank');
+                        dBtn.innerText = originalText;
+                    }
+                }
+            };
 
             row.appendChild(vBtn); row.appendChild(dBtn);
             card.appendChild(preview); card.appendChild(row);
