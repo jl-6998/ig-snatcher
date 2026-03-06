@@ -17,13 +17,22 @@
     .btn-clear { background: linear-gradient(90deg, #e1306c, #c13584); color: white; font-weight: bold; font-size: 16px; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4); }
     .btn-clear:active { transform: scale(0.98); }
     
-    .spinner-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 0; }
+    /* Loading Spinner */
+    .spinner-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 0; grid-column: span 2; }
     .spinner { width: 48px; height: 48px; border: 4px solid #333; border-top: 4px solid #0095f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .spinner-wrapper p { margin-top: 12px; color: #aaa; font-size: 14px; }
     
-    #results { margin-top: 20px; }
-    .raw-dump { height: 300px; width: 100%; background: #121215; color: #00ff00; font-family: monospace; font-size: 12px; border: 1px solid #333; padding: 10px; border-radius: 8px; overflow-y: scroll; resize: none; }
+    /* Grid Layout */
+    #results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+    .media-card { background: #1e1e24; border-radius: 12px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .preview-container { width: 100%; min-height: 160px; height: auto; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .preview-container img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-container video { width: 100%; height: 100%; object-fit: contain; }
+    .action-row { display: flex; width: 100%; border-top: 1px solid #333; }
+    .download-link { flex: 1; padding: 12px 5px; background: #0095f6; color: white; text-decoration: none; font-weight: 600; font-size: 14px; text-align: center; transition: background 0.2s; border: none; cursor: pointer; }
+    .download-link:first-child { border-right: 1px solid #1e1e24; }
+    .download-link:hover { background: #007bb5; }
   </style>
 </head>
 <body>
@@ -34,7 +43,7 @@
     <input id="igLink" type="text" placeholder="https://instagram.com/...">
     
     <button class="btn-main" onclick="sendToBackend()">Download Media</button>
-    <button class="btn-clear" onclick="clearAll()">Clear</button>
+    <button class="btn-clear" onclick="clearAll()">Clear All</button>
 
     <div id="results"></div>
   </div>
@@ -64,16 +73,112 @@
         });
         
         let result = await response.json();
+        resultDiv.innerHTML = ""; 
         
         if (result.status === "success") {
-          // This dumps the green JSON code on the screen so we can map it
-          resultDiv.innerHTML = `<textarea class="raw-dump" readonly>${JSON.stringify(result.raw_data, null, 2)}</textarea>
-                                 <p style="text-align:center; color: #aaa; margin-top: 10px;">Screenshot this text so we can build the final video card!</p>`;
+          let raw = result.raw_data;
+          let mediaLinks = [];
+
+          // The Smart Scanner: Digs through the green text looking for HD media
+          function findMedia(obj) {
+            if (!obj || typeof obj !== 'object') return;
+            
+            // Prioritize videos, fallback to photos
+            if (obj.video_url) {
+                mediaLinks.push({ type: 'video', url: obj.video_url });
+            } else if (obj.display_url && !obj.video_url) {
+                mediaLinks.push({ type: 'image', url: obj.display_url });
+            }
+            
+            // Dig deeper
+            for (let key in obj) {
+              if (typeof obj[key] === 'object') {
+                findMedia(obj[key]);
+              }
+            }
+          }
+          
+          findMedia(raw);
+
+          // Clean up duplicates
+          let uniqueLinks = [];
+          let seen = new Set();
+          mediaLinks.forEach(m => {
+             if(!seen.has(m.url)) {
+                 seen.add(m.url);
+                 uniqueLinks.push(m);
+             }
+          });
+
+          if (uniqueLinks.length === 0) {
+              resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't find the media inside the API response. IG might be blocking this specific post.</p>`;
+              return;
+          }
+
+          // Build the beautiful UI Cards
+          uniqueLinks.forEach((media) => {
+            let card = document.createElement('div');
+            card.className = "media-card";
+
+            let preview = document.createElement('div');
+            preview.className = "preview-container";
+            
+            if (media.type === 'video') {
+              // Videos now have sound included from the API!
+              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer"><source src="${media.url}" type="video/mp4"></video>`;
+            } else {
+              let img = document.createElement('img');
+              img.src = media.url;
+              img.referrerPolicy = 'no-referrer';
+              // wsrv fallback so IG images load cleanly
+              img.onerror = function() {
+                if (!this.dataset.retried) {
+                  this.dataset.retried = '1';
+                  this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(media.url);
+                }
+              };
+              preview.appendChild(img);
+            }
+            
+            let actionRow = document.createElement('div');
+            actionRow.className = "action-row";
+
+            // 👁️ View Button
+            let viewBtn = document.createElement('a');
+            viewBtn.href = media.url;
+            viewBtn.target = "_blank"; 
+            viewBtn.rel = "noopener noreferrer"; 
+            viewBtn.className = "download-link";
+            viewBtn.innerText = "👁️ View";
+
+            // ⬇️ Save Button
+            let dlBtn = document.createElement('a');
+            dlBtn.href = media.url;
+            dlBtn.className = "download-link";
+            dlBtn.innerText = "⬇️ Save";
+            
+            // Note: For massive videos, browsers still force them open in a new tab instead of instant saving.
+            // If it opens in a tab, tell them to tap the 3 dots.
+            dlBtn.onclick = function(e) {
+                if(media.type === 'video') {
+                    // Just open it cleanly, mobile browsers are strict about massive video blobs.
+                    alert("If the video opens in a new tab, just hit the 3 dots in the bottom right corner to save it to your camera roll!");
+                }
+            };
+
+            actionRow.appendChild(viewBtn);
+            actionRow.appendChild(dlBtn);
+
+            card.appendChild(preview);
+            card.appendChild(actionRow);
+            resultDiv.appendChild(card);
+          });
+
         } else {
-          resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4d;">${result.message}</p>`;
+          resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">${result.message}</p>`;
         }
       } catch (error) {
-        resultDiv.innerHTML = `<p style="text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure PythonAnywhere is running!</p>`;
+        resultDiv.innerHTML = `<p style="grid-column: span 2; text-align: center; color: #ff4d4d;">Couldn't reach server. Make sure PythonAnywhere is running!</p>`;
       }
     }
   </script>
