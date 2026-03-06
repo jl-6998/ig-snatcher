@@ -82,7 +82,6 @@
       transform: scale(0.98);
     }
 
-    /* --- The Magic Grid Layout --- */
     #results { 
       display: grid; 
       grid-template-columns: repeat(2, 1fr); 
@@ -124,9 +123,15 @@
       object-fit: contain; 
     }
 
+    .action-row {
+      display: flex;
+      width: 100%;
+      border-top: 1px solid #333;
+    }
+
     .download-link { 
-      display: block; 
-      padding: 12px; 
+      flex: 1;
+      padding: 12px 5px; 
       background: #0095f6; 
       color: white; 
       text-decoration: none; 
@@ -134,18 +139,16 @@
       font-size: 14px;
       text-align: center;
       transition: background 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .download-link:first-child {
+      border-right: 1px solid #1e1e24;
     }
 
     .download-link:hover {
       background: #007bb5;
-    }
-
-    .thumbnail-link {
-      background: linear-gradient(90deg, #e1306c, #c13584);
-    }
-
-    .thumbnail-link:hover {
-      background: linear-gradient(90deg, #c13584, #833ab4);
     }
 
     .btn-clear {
@@ -162,7 +165,6 @@
       transform: scale(0.98);
     }
 
-    /* Loading Spinner */
     .spinner-wrapper {
       grid-column: span 2;
       display: flex;
@@ -255,6 +257,7 @@
       resultDiv.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><p>Snatching media... 🕵️‍♂️</p></div>`;
 
       try {
+        // Hitting your custom PythonAnywhere backend
         let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -269,64 +272,70 @@
             let card = document.createElement('div');
             card.className = "media-card";
 
+            // 1. Setup the Preview Video/Image
             let preview = document.createElement('div');
             preview.className = "preview-container";
             
             if (link.includes('.mp4')) {
-              preview.innerHTML = `<video controls playsinline preload="auto" referrerpolicy="no-referrer"><source src="${link}" type="video/mp4"></video>`;
+              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer"><source src="${link}" type="video/mp4"></video>`;
             } else {
               let img = document.createElement('img');
               img.src = link;
               img.referrerPolicy = 'no-referrer';
-              img.crossOrigin = 'anonymous';
-              img.onerror = function() {
-                if (!this.dataset.retried) {
-                  this.dataset.retried = '1';
-                  this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(link);
-                }
-              };
               preview.appendChild(img);
             }
             
+            // 2. Setup the Action Buttons (View and Save)
+            let actionRow = document.createElement('div');
+            actionRow.className = "action-row";
+
+            // The View Button (Safe, opens in new tab)
+            let viewBtn = document.createElement('a');
+            viewBtn.href = link;
+            viewBtn.target = "_blank"; 
+            viewBtn.className = "download-link";
+            viewBtn.innerText = "👁️ View";
+
+            // The Force Download Button (Uses proxy to bypass IG security)
             let dlBtn = document.createElement('a');
-            dlBtn.href = link;
-            dlBtn.target = "_blank"; 
+            dlBtn.href = "#";
             dlBtn.className = "download-link";
-            dlBtn.innerText = "⬇ Download";
+            dlBtn.innerText = "⬇️ Save";
+            
+            dlBtn.onclick = async function(e) {
+              e.preventDefault();
+              let originalText = dlBtn.innerText;
+              dlBtn.innerText = "⏳ Pulling file...";
+              
+              try {
+                // Smuggling the file through a CORS proxy
+                let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(link);
+                let res = await fetch(proxyUrl);
+                let blob = await res.blob();
+                
+                // Create a local ghost link to trigger the download
+                let blobUrl = window.URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = link.includes('.mp4') ? `JL_Video_${Date.now()}.mp4` : `JL_Image_${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+                
+                dlBtn.innerText = "✅ Saved!";
+                setTimeout(() => dlBtn.innerText = originalText, 3000);
+              } catch (err) {
+                alert("Proxy timed out! Just hit the 'View' button to open it and save it manually.");
+                dlBtn.innerText = originalText;
+              }
+            };
+
+            actionRow.appendChild(viewBtn);
+            actionRow.appendChild(dlBtn);
 
             card.appendChild(preview);
-            card.appendChild(dlBtn);
-
-            if (link.includes('.mp4')) {
-              let thumbBtn = document.createElement('a');
-              thumbBtn.href = "#";
-              thumbBtn.className = "download-link thumbnail-link";
-              thumbBtn.innerText = "🖼 Download Thumbnail";
-              thumbBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                let videoEl = card.querySelector('video');
-                if (!videoEl || videoEl.readyState < 2) {
-                  alert('Please wait for the video to load before downloading the thumbnail.');
-                  return;
-                }
-                try {
-                  let canvas = document.createElement('canvas');
-                  canvas.width = videoEl.videoWidth || 640;
-                  canvas.height = videoEl.videoHeight || 360;
-                  canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-                  let a = document.createElement('a');
-                  a.href = canvas.toDataURL('image/png');
-                  a.download = 'thumbnail_' + Date.now() + '.png';
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                } catch (err) {
-                  alert('Could not capture thumbnail due to cross-origin restrictions. Try opening the video URL directly.');
-                }
-              });
-              card.appendChild(thumbBtn);
-            }
-
+            card.appendChild(actionRow);
             resultDiv.appendChild(card);
           });
         } else {
