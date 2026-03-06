@@ -7,14 +7,10 @@
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f0f11; color: #ffffff; padding: 20px; margin: 0; }
     .container { max-width: 600px; margin: 0 auto; }
-    h2 { text-align: center; font-size: 28px; background: linear-gradient(90deg, #0095f6, #e1306c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; }
-    
-    .tab-container { display: flex; justify-content: space-between; margin-bottom: 25px; background: #1a1a1d; border-radius: 12px; padding: 5px; border: 1px solid #333; }
-    .tab-btn { flex: 1; padding: 12px; background: transparent; border: none; color: #aaa; font-weight: bold; font-size: 15px; cursor: pointer; border-radius: 8px; transition: 0.3s; }
-    .tab-btn.active { background: linear-gradient(90deg, #0095f6, #e1306c); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    h2 { text-align: center; font-size: 28px; background: linear-gradient(90deg, #0095f6, #e1306c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 30px; }
     
     .step-label { font-size: 14px; font-weight: bold; color: #aaa; margin-bottom: 8px; display: block; }
-    input, textarea, button { width: 100%; margin-bottom: 20px; padding: 15px; border-radius: 12px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; background-color: #1a1a1d; color: #fff; }
+    input, textarea, button { width: 100%; margin-bottom: 25px; padding: 15px; border-radius: 12px; border: 1px solid #333; box-sizing: border-box; font-size: 15px; background-color: #1a1a1d; color: #fff; }
     input:focus, textarea:focus { outline: none; border-color: #0095f6; }
     input[readonly] { background-color: #121215; color: #00ff00; border-color: #222; font-weight: bold; text-align: left; font-size: 13px; }
     textarea { height: 120px; resize: none; font-family: monospace; font-size: 13px; }
@@ -23,9 +19,6 @@
     .btn-main:active { transform: scale(0.98); }
     .btn-clear { background: linear-gradient(90deg, #e1306c, #c13584); color: white; font-weight: bold; font-size: 16px; cursor: pointer; border: none; }
     
-    .section { display: none; }
-    .section.active { display: block; }
-
     #results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
     .media-card { background: #1e1e24; border-radius: 12px; overflow: hidden; border: 1px solid #333; display: flex; flex-direction: column; }
     .preview-container { width: 100%; min-height: 160px; height: auto; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
@@ -47,59 +40,32 @@
   <div class="container">
     <h2>J.L Downloader</h2>
     
-    <div class="tab-container">
-      <button class="tab-btn active" onclick="switchMode('public')" id="tab-public">🌍 Public</button>
-      <button class="tab-btn" onclick="switchMode('private')" id="tab-private">🕵️‍♂️ Private</button>
+    <label class="step-label">Step 1: Paste IG Link (Post, Reel, or Story)</label>
+    <input id="privateLink" type="text" placeholder="https://instagram.com/p/..." oninput="generateSource()">
+    
+    <label class="step-label">Step 2: Generate & Copy Link</label>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <input id="sourceLink" type="text" readonly placeholder="Waiting for link..." style="margin-bottom: 0;">
+      <button class="btn-main" style="margin-bottom: 0; width: auto; padding: 0 20px; font-size: 15px;" onclick="copySource()">📋 Copy</button>
     </div>
-
-    <div id="ui-public" class="section active">
-      <label class="step-label">Fast Download (Public Reels/Posts/Stories)</label>
-      <input id="publicLink" type="text" placeholder="https://instagram.com/p/...">
-      <button class="btn-main" onclick="runPublic()">🚀 Snatch Public Media</button>
-    </div>
-
-    <div id="ui-private" class="section">
-      <label class="step-label">Step 1: Paste Private IG Link</label>
-      <input id="privateLink" type="text" placeholder="https://instagram.com/p/..." oninput="generateSource()">
-      
-      <label class="step-label">Step 2: Generate & Copy Link</label>
-      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <input id="sourceLink" type="text" readonly placeholder="Waiting for link..." style="margin-bottom: 0;">
-        <button class="btn-main" style="margin-bottom: 0; width: auto; padding: 0 20px; font-size: 15px;" onclick="copySource()">📋 Copy</button>
-      </div>
-      
-      <label class="step-label">Step 3: Paste raw JSON code here</label>
-      <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
-      
-      <button class="btn-main" onclick="runPrivate()">🕵️‍♂️ Snatch Private Media</button>
-    </div>
-
+    
+    <label class="step-label">Step 3: Paste raw JSON code here</label>
+    <textarea id="rawCode" placeholder="Dump the code here..."></textarea>
+    
+    <button class="btn-main" onclick="runPrivate()">🕵️‍♂️ Snatch Media</button>
     <button class="btn-clear" onclick="clearAll()">Clear All</button>
 
     <div id="results"></div>
   </div>
 
   <script>
-    function switchMode(mode) {
-      document.getElementById('ui-public').classList.remove('active');
-      document.getElementById('ui-private').classList.remove('active');
-      document.getElementById('tab-public').classList.remove('active');
-      document.getElementById('tab-private').classList.remove('active');
-      
-      document.getElementById(`ui-${mode}`).classList.add('active');
-      document.getElementById(`tab-${mode}`).classList.add('active');
-      document.getElementById('results').innerHTML = '';
-    }
-
     function clearAll() {
-      document.getElementById('publicLink').value = '';
       document.getElementById('privateLink').value = '';
       document.getElementById('sourceLink').value = '';
       document.getElementById('rawCode').value = '';
       document.getElementById('results').innerHTML = '';
     }
 
-    // Step 2 Link Generator
     function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
@@ -119,7 +85,6 @@
       }
     }
 
-    // THE FIXED COPY BUTTON
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
         if (!targetInput.value || targetInput.value === "Waiting for link...") {
@@ -135,19 +100,10 @@
         });
     }
 
-    async function runPublic() {
-      let link = document.getElementById('publicLink').value;
-      if(!link) return alert("Drop the link first!");
-      await fetchBackend({ link: link });
-    }
-
     async function runPrivate() {
       let code = document.getElementById('rawCode').value;
       if(!code) return alert("Paste the raw code first!");
-      await fetchBackend({ raw_data: code });
-    }
-
-    async function fetchBackend(payload) {
+      
       let resDiv = document.getElementById('results');
       resDiv.innerHTML = `<div style="grid-column: span 2; text-align:center;"><div class="spinner"></div><p>Snatching media... ⏳</p></div>`;
 
@@ -155,7 +111,7 @@
         let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ raw_data: code })
         });
         
         let result = await response.json();
@@ -163,14 +119,10 @@
         
         if (result.status === "success") {
           let mediaLinks = [];
-
           let sourceData = null;
-          if (result.mode === "public") {
-              sourceData = result.raw_data;
-          } else if (result.mode === "private") {
-              try { sourceData = JSON.parse(document.getElementById('rawCode').value); } 
-              catch(e) { sourceData = null; }
-          }
+          
+          try { sourceData = JSON.parse(code); } 
+          catch(e) { sourceData = null; }
 
           if (sourceData) {
             function dig(obj) {
@@ -191,7 +143,7 @@
               for (let key in obj) if (typeof obj[key] === 'object') dig(obj[key]);
             }
             dig(sourceData);
-          } else if (result.mode === "private" && result.links) {
+          } else if (result.links) {
              mediaLinks = result.links.map(l => ({ type: l.includes('.mp4') ? 'video' : 'image', url: l, thumb: '' }));
           }
 
@@ -199,13 +151,8 @@
           let seen = new Set();
           mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
 
-          // THE DIAGNOSTIC DUMP: If it fails, it prints the exact API code so we can fix it!
           if(unique.length === 0) {
-              if (result.mode === "public") {
-                 return resDiv.innerHTML = `<div style="grid-column: span 2; color: #ff4d4d; word-break: break-all; font-size: 11px; font-family: monospace; background: #220000; padding: 10px; border-radius: 8px;"><b>API REJECTED IT (Screenshot this):</b><br><br>${JSON.stringify(sourceData)}</div>`;
-              } else {
-                 return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump.</p>`;
-              }
+              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump bro.</p>`;
           }
           
           unique.forEach(media => {
