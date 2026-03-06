@@ -53,7 +53,7 @@
     </div>
 
     <div id="ui-public" class="section active">
-      <label class="step-label">Fast Download (Public Reels/Posts only)</label>
+      <label class="step-label">Fast Download (Public Reels/Posts/Stories)</label>
       <input id="publicLink" type="text" placeholder="https://instagram.com/p/...">
       <button class="btn-main" onclick="runPublic()">🚀 Snatch Public Media</button>
     </div>
@@ -150,7 +150,6 @@
         if (result.status === "success") {
           let mediaLinks = [];
 
-          // The Smart Dictionary Scanner
           let sourceData = null;
           if (result.mode === "public") {
               sourceData = result.raw_data;
@@ -160,31 +159,35 @@
           }
 
           if (sourceData) {
+            // THE UPGRADED SCANNER: Catches Reels, Posts, and weird Story formats!
             function dig(obj) {
               if (!obj || typeof obj !== 'object') return;
+              
               if (obj.video_url) {
-                  // Grabs the display_url to use as the Video Thumbnail!
-                  let thumb = obj.thumbnail_url || obj.display_url || '';
-                  mediaLinks.push({ type: 'video', url: obj.video_url, thumb: thumb });
+                  mediaLinks.push({ type: 'video', url: obj.video_url, thumb: obj.thumbnail_url || obj.display_url || '' });
+              } else if (obj.video_versions && obj.video_versions.length > 0 && obj.video_versions[0].url) {
+                  mediaLinks.push({ type: 'video', url: obj.video_versions[0].url, thumb: '' });
               } else if (obj.display_url && !obj.video_url) {
                   mediaLinks.push({ type: 'image', url: obj.display_url });
+              } else if (obj.image_versions2 && obj.image_versions2.candidates && obj.image_versions2.candidates.length > 0) {
+                  if (!obj.video_versions) {
+                      mediaLinks.push({ type: 'image', url: obj.image_versions2.candidates[0].url });
+                  }
               }
+
               for (let key in obj) if (typeof obj[key] === 'object') dig(obj[key]);
             }
             dig(sourceData);
           } else if (result.mode === "private" && result.links) {
-             // Fallback if it couldn't parse the JSON dump perfectly
              mediaLinks = result.links.map(l => ({ type: l.includes('.mp4') ? 'video' : 'image', url: l, thumb: '' }));
           }
 
-          // Clean Duplicates
           let unique = [];
           let seen = new Set();
           mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
 
-          if(unique.length === 0) return resDiv.innerHTML = `<p style="grid-column: span 2; color: red;">Media not found bro.</p>`;
+          if(unique.length === 0) return resDiv.innerHTML = `<p style="grid-column: span 2; color: red;">Media not found bro. Account might be private or API missed it.</p>`;
           
-          // Build Cards
           unique.forEach(media => {
             let card = document.createElement('div'); card.className = "media-card";
             let preview = document.createElement('div'); preview.className = "preview-container";
@@ -199,10 +202,8 @@
             
             let row = document.createElement('div'); row.className = "action-row";
             
-            // 👁️ VIEW BUTTON
             let vBtn = document.createElement('a'); vBtn.href = media.url; vBtn.target = "_blank"; vBtn.className = "download-link"; vBtn.innerText = "👁️ View";
             
-            // ⬇️ SAVE BUTTON (With 1-Click Aggressive Hack)
             let dBtn = document.createElement('a'); 
             dBtn.href = "#"; 
             dBtn.className = "download-link"; 
@@ -214,10 +215,9 @@
                 dBtn.innerText = "⏳...";
 
                 if(media.type === 'video') {
-                    // Aggressive 1-Click HTML5 Hack
                     try {
                         let a = document.createElement('a');
-                        a.href = media.url + "&dl=1"; // Tricks the CDN
+                        a.href = media.url + "&dl=1"; 
                         a.setAttribute('download', `JL_Video_${Date.now()}.mp4`);
                         document.body.appendChild(a);
                         a.click();
@@ -228,7 +228,6 @@
                         window.open(media.url, '_blank');
                     }
                 } else {
-                    // Silent proxy download for images
                     try {
                         let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.url);
                         let res = await fetch(proxyUrl);
@@ -253,7 +252,6 @@
             card.appendChild(preview); 
             card.appendChild(row);
 
-            // 🖼️ THUMBNAIL BUTTON (Only for Videos)
             if (media.type === 'video' && media.thumb) {
                 let tBtn = document.createElement('a');
                 tBtn.href = "#";
