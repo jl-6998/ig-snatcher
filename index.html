@@ -66,7 +66,6 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    // UPDATED BULLETPROOF GENERATE SOURCE FUNCTION
     function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
@@ -76,50 +75,39 @@
       try {
         let urlObj = new URL(link);
         let path = urlObj.pathname;
-        let params = new URLSearchParams(urlObj.search);
-        
         let graphqlBase = "https://www.instagram.com/graphql/query/?";
 
-        // 1. Check for Highlights or Links with story_media_id (The fix you needed)
-        if (params.has('story_media_id')) {
-          let mediaId = params.get('story_media_id');
-          let queryHash = "de8017ee0a7c9c45ec4260733d81ea31";
-          let vars = JSON.stringify({
-            "reel_ids": [mediaId],
-            "tag_names": [],
-            "location_ids": [],
-            "highlight_reel_ids": [],
-            "precomposed_overlay": false,
-            "show_story_viewer_list": false,
-            "story_viewer_fetch_count": 50,
-            "story_viewer_cursor": "",
-            "stories_video_dash_manifest": false
-          });
-          targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
-          return;
+        // 1. Check for Highlights (the /s/ URL)
+        let highlightMatch = path.match(/\/s\/([a-zA-Z0-9_=-]+)/);
+        if (highlightMatch && highlightMatch[1]) {
+            let base64str = highlightMatch[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (base64str.length % 4) { base64str += '='; }
+            let decoded = atob(base64str); 
+            
+            let highlightId = decoded.split(':')[1]; 
+            let queryHash = "de8017ee0a7c9c45ec4260733d81ea31";
+            let vars = JSON.stringify({
+              "reel_ids": [],
+              "tag_names": [],
+              "location_ids": [],
+              "highlight_reel_ids": [highlightId],
+              "precomposed_overlay": false,
+              "show_story_viewer_list": false,
+              "story_viewer_fetch_count": 50,
+              "story_viewer_cursor": "",
+              "stories_video_dash_manifest": false
+            });
+            targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
+            return;
         }
 
         // 2. Check for regular Stories
-        let storyMatch = path.match(/\/stories\/[^\/]+\/(\d+)/);
-        if (storyMatch && storyMatch[1]) {
-          let storyId = storyMatch[1];
-          let queryHash = "de8017ee0a7c9c45ec4260733d81ea31";
-          let vars = JSON.stringify({
-            "reel_ids": [storyId],
-            "tag_names": [],
-            "location_ids": [],
-            "highlight_reel_ids": [],
-            "precomposed_overlay": false,
-            "show_story_viewer_list": false,
-            "story_viewer_fetch_count": 50,
-            "story_viewer_cursor": "",
-            "stories_video_dash_manifest": false
-          });
-          targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
-          return;
+        if (path.includes('/stories/')) {
+            targetInput.value = `view-source:${urlObj.origin}${path}?__a=1&__d=dis`;
+            return;
         }
 
-        // 3. Regular Posts, Reels, and IGTV (Kept your original doc_id logic)
+        // 3. Regular Posts, Reels, and IGTV
         let match = path.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
         if(match && match[1]) {
           let vars = JSON.stringify({
@@ -132,22 +120,19 @@
           return;
         }
 
-        // If it's none of the above formats
         targetInput.value = "Format not recognized. Check the link.";
 
       } catch (e) {
-        // If they paste something that isn't a real URL
         targetInput.value = "Waiting for a valid link...";
       }
     }
 
-    // ORIGINAL COPY FUNCTION
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
         let privateLink = document.getElementById('privateLink').value;
 
         if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized")) {
-            return alert("Drop a valid link in Step 1 first, twin!");
+            return alert("Drop a valid link in Step 1 first!");
         }
         
         navigator.clipboard.writeText(targetInput.value).then(() => {
@@ -159,7 +144,6 @@
         });
     }
 
-    // ORIGINAL RUN PRIVATE FUNCTION (Untouched to keep your extraction working)
     async function runPrivate() {
       let code = document.getElementById('rawCode').value;
       if(!code) return alert("Paste the raw code first!");
@@ -192,10 +176,13 @@
                   mediaLinks.push({ type: 'video', url: obj.video_url, thumb: obj.thumbnail_url || obj.display_url || '' });
               } else if (obj.video_versions && obj.video_versions.length > 0 && obj.video_versions[0].url) {
                   mediaLinks.push({ type: 'video', url: obj.video_versions[0].url, thumb: '' });
-              } else if (obj.display_url && !obj.video_url) {
+              } else if (obj.video_resources && obj.video_resources.length > 0 && obj.video_resources[0].src) {
+                  // This is the new line that catches Highlight videos from GraphQL
+                  mediaLinks.push({ type: 'video', url: obj.video_resources[0].src, thumb: obj.display_url || '' });
+              } else if (obj.display_url && !obj.video_url && !obj.video_resources) {
                   mediaLinks.push({ type: 'image', url: obj.display_url });
               } else if (obj.image_versions2 && obj.image_versions2.candidates && obj.image_versions2.candidates.length > 0) {
-                  if (!obj.video_versions) {
+                  if (!obj.video_versions && !obj.video_resources) {
                       mediaLinks.push({ type: 'image', url: obj.image_versions2.candidates[0].url });
                   }
               }
@@ -212,7 +199,7 @@
           mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
 
           if(unique.length === 0) {
-              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump bro.</p>`;
+              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump.</p>`;
           }
           
           unique.forEach(media => {
