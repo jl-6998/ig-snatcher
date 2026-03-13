@@ -101,23 +101,10 @@
             return;
         }
 
-        // 2. Check for regular Stories — FORCED GRAPHQL LINK
+        // 2. Check for regular Stories — THE BACKDOOR
         let storyMatch = path.match(/\/stories\/[^\/]+\/(\d+)/);
         if (storyMatch && storyMatch[1]) {
-            let storyId = storyMatch[1]; // Grabbing the Video ID
-            let queryHash = "de8017ee0a7c9c45ec4260733d81ea31";
-            let vars = JSON.stringify({
-              "reel_ids": [storyId], 
-              "tag_names": [],
-              "location_ids": [],
-              "highlight_reel_ids": [],
-              "precomposed_overlay": false,
-              "show_story_viewer_list": false,
-              "story_viewer_fetch_count": 50,
-              "story_viewer_cursor": "",
-              "stories_video_dash_manifest": false
-            });
-            targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
+            targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
             return;
         }
 
