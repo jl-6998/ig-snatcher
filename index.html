@@ -101,23 +101,10 @@
             return;
         }
 
-        // 2. Check for regular Stories — convert media PK to shortcode for GraphQL
+        // 2. Check for regular Stories — Back to the bulletproof raw JSON method
         let storyMatch = path.match(/\/stories\/[^/]+\/(\d+)/);
         if (storyMatch && storyMatch[1]) {
-            let alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-            let id = BigInt(storyMatch[1]);
-            let shortcode = '';
-            while (id > 0n) {
-                shortcode = alphabet[Number(id % 64n)] + shortcode;
-                id = id / 64n;
-            }
-            let vars = JSON.stringify({
-              "shortcode": shortcode,
-              "fetch_tagged_user_count": null,
-              "hoisted_comment_id": null,
-              "hoisted_reply_id": null
-            });
-            targetInput.value = `${graphqlBase}doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
+            targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
             return;
         }
 
