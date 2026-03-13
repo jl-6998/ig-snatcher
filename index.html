@@ -101,9 +101,9 @@
             return;
         }
 
-        // 2. Check for regular Stories
+        // 2. Check for regular Stories (REMOVED VIEW-SOURCE FOR CLEANER LINK)
         if (path.includes('/stories/')) {
-            targetInput.value = `view-source:${urlObj.origin}${path}?__a=1&__d=dis`;
+            targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
             return;
         }
 
@@ -132,7 +132,7 @@
         let privateLink = document.getElementById('privateLink').value;
 
         if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized")) {
-            return alert("Drop a valid link in Step 1 first!");
+            return alert("Drop a valid link in Step 1 first, twin!");
         }
         
         navigator.clipboard.writeText(targetInput.value).then(() => {
@@ -177,7 +177,6 @@
               } else if (obj.video_versions && obj.video_versions.length > 0 && obj.video_versions[0].url) {
                   mediaLinks.push({ type: 'video', url: obj.video_versions[0].url, thumb: '' });
               } else if (obj.video_resources && obj.video_resources.length > 0 && obj.video_resources[0].src) {
-                  // This is the new line that catches Highlight videos from GraphQL
                   mediaLinks.push({ type: 'video', url: obj.video_resources[0].src, thumb: obj.display_url || '' });
               } else if (obj.display_url && !obj.video_url && !obj.video_resources) {
                   mediaLinks.push({ type: 'image', url: obj.display_url });
@@ -199,7 +198,7 @@
           mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
 
           if(unique.length === 0) {
-              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump.</p>`;
+              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump bro.</p>`;
           }
           
           unique.forEach(media => {
