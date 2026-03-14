@@ -101,28 +101,24 @@
             return;
         }
 
-        // 2. Check for regular Stories — AGGRESSIVE AUTO-FETCH
+        // 2. Check for regular Stories — PRO BACKEND METHOD
         let storyMatch = path.match(/\/stories\/([^\/]+)\/(\d+)/);
         if (storyMatch) {
             let storyUsername = storyMatch[1];
-            targetInput.value = `⏳ Bypassing IG blocks to sniff ID for @${storyUsername}...`;
+            targetInput.value = `⏳ Asking Python server for @${storyUsername}'s ID...`;
             
             try {
-                let searchUrl = `https://www.instagram.com/web/search/topsearch/?query=${storyUsername}`;
-                // Using allorigins proxy to bypass basic CORS and blocks
-                let res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`);
-                let jsonResponse = await res.json();
-                let data = JSON.parse(jsonResponse.contents);
+                let res = await fetch('https://seeyha.pythonanywhere.com/get_ig_id', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: storyUsername })
+                });
                 
-                let userId = null;
-                if (data.users && data.users.length > 0) {
-                    let exactMatch = data.users.find(u => u.user.username === storyUsername);
-                    userId = exactMatch ? exactMatch.user.pk : data.users[0].user.pk;
-                }
-
-                if (userId) {
+                let result = await res.json();
+                
+                if (result.status === "success" && result.user_id) {
                     let vars = JSON.stringify({
-                      "reel_ids": [userId],
+                      "reel_ids": [result.user_id],
                       "tag_names": [],
                       "location_ids": [],
                       "highlight_reel_ids": [],
@@ -134,10 +130,10 @@
                     });
                     targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
                 } else {
-                    targetInput.value = "Error: Proxy couldn't find the User ID.";
+                    targetInput.value = `❌ Backend Error: ${result.message || "Couldn't find ID"}`;
                 }
             } catch (err) {
-                targetInput.value = "Error: Instagram fully blocked the proxy fetch.";
+                targetInput.value = "❌ Server error. Did you reload PythonAnywhere?";
             }
             return;
         }
@@ -165,7 +161,7 @@
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
 
-        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not") || targetInput.value.includes("⏳") || targetInput.value.includes("Error")) {
+        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not") || targetInput.value.includes("⏳") || targetInput.value.includes("❌")) {
             return alert("Hold up, wait for a valid link to generate first!");
         }
         
