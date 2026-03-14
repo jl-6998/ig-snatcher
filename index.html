@@ -66,7 +66,6 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    // Changed to async to handle the stealth User ID fetch
     async function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
@@ -102,20 +101,20 @@
             return;
         }
 
-        // 2. Check for regular Stories — AUTO-FETCH USER ID METHOD
+        // 2. Check for regular Stories — AGGRESSIVE AUTO-FETCH
         let storyMatch = path.match(/\/stories\/([^\/]+)\/(\d+)/);
         if (storyMatch) {
             let storyUsername = storyMatch[1];
-            targetInput.value = `⏳ Sniffing User ID for @${storyUsername}...`;
+            targetInput.value = `⏳ Bypassing IG blocks to sniff ID for @${storyUsername}...`;
             
             try {
-                // Silently bounce off a proxy to Instagram's Search API
                 let searchUrl = `https://www.instagram.com/web/search/topsearch/?query=${storyUsername}`;
-                let res = await fetch('https://corsproxy.io/?' + encodeURIComponent(searchUrl));
-                let data = await res.json();
+                // Using allorigins proxy to bypass basic CORS and blocks
+                let res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`);
+                let jsonResponse = await res.json();
+                let data = JSON.parse(jsonResponse.contents);
                 
                 let userId = null;
-                // Dig out the numeric ID from the search results
                 if (data.users && data.users.length > 0) {
                     let exactMatch = data.users.find(u => u.user.username === storyUsername);
                     userId = exactMatch ? exactMatch.user.pk : data.users[0].user.pk;
@@ -135,12 +134,10 @@
                     });
                     targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
                 } else {
-                    // Fallback to backdoor if the search fails
-                    targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
+                    targetInput.value = "Error: Proxy couldn't find the User ID.";
                 }
             } catch (err) {
-                // Fallback to backdoor if the proxy gets blocked
-                targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
+                targetInput.value = "Error: Instagram fully blocked the proxy fetch.";
             }
             return;
         }
@@ -168,8 +165,8 @@
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
 
-        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized") || targetInput.value.includes("⏳")) {
-            return alert("Hold up, let it finish cooking the link first!");
+        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not") || targetInput.value.includes("⏳") || targetInput.value.includes("Error")) {
+            return alert("Hold up, wait for a valid link to generate first!");
         }
         
         navigator.clipboard.writeText(targetInput.value).then(() => {
