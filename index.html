@@ -78,7 +78,34 @@
       }
     }
 
-    function generateSource() {
+    function buildStoryVars(userId) {
+      return JSON.stringify({
+        "reel_ids": [userId],
+        "tag_names": [],
+        "location_ids": [],
+        "highlight_reel_ids": [],
+        "precomposed_overlay": false,
+        "show_story_viewer_list": false,
+        "story_viewer_fetch_count": 50,
+        "story_viewer_cursor": "",
+        "stories_video_dash_manifest": false
+      });
+    }
+
+    async function resolveUserId(username) {
+      let proxyBase = 'https://corsproxy.io/?';
+      let apiUrl = `https://i.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+      let res = await fetch(proxyBase + encodeURIComponent(apiUrl), {
+        headers: { 'x-ig-app-id': '936619743392459' }
+      });
+      if (!res.ok) throw new Error(`Failed to resolve user ID for '${username}': HTTP ${res.status}`);
+      let json = await res.json();
+      let id = json && json.data && json.data.user && json.data.user.id;
+      if (!id) throw new Error(`User ID not found for '${username}'`);
+      return id;
+    }
+
+    async function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
       let storySection = document.getElementById('storyUserIdSection');
@@ -115,34 +142,30 @@
             return;
         }
 
-        // 2. Check for regular Stories — uses GraphQL with reel_ids
+        // 2. Check for regular Stories — auto-resolve username to user ID
         let storyMatch = path.match(/\/stories\/([^\/]+)\/(\d+)/);
         if (storyMatch) {
             let storyUsername = storyMatch[1];
-            let storyMediaId = storyMatch[2];
-            
-            // Show the user ID input field
-            storySection.style.display = 'block';
-            
-            let userId = document.getElementById('storyUserId').value.trim();
-            
-            if (!userId) {
-                targetInput.value = "Enter the owner's User ID in Step 1.5 above ☝️";
+
+            // Check if a manually-entered user ID is already present (fallback path)
+            let manualUserId = document.getElementById('storyUserId').value.trim();
+            if (manualUserId) {
+                storySection.style.display = 'none';
+                targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(buildStoryVars(manualUserId))}`;
                 return;
             }
-            
-            let vars = JSON.stringify({
-              "reel_ids": [userId],
-              "tag_names": [],
-              "location_ids": [],
-              "highlight_reel_ids": [],
-              "precomposed_overlay": false,
-              "show_story_viewer_list": false,
-              "story_viewer_fetch_count": 50,
-              "story_viewer_cursor": "",
-              "stories_video_dash_manifest": false
-            });
-            targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
+
+            // Auto-resolve the username to a numeric user ID
+            targetInput.value = "🔍 Looking up user ID...";
+            try {
+                let userId = await resolveUserId(storyUsername);
+                storySection.style.display = 'none';
+                targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(buildStoryVars(userId))}`;
+            } catch (err) {
+                // Fallback: show the manual user ID input
+                storySection.style.display = 'block';
+                targetInput.value = "Enter the owner's User ID in Step 1.5 above ☝️";
+            }
             return;
         }
 
@@ -173,7 +196,7 @@
         let targetInput = document.getElementById('sourceLink');
         let privateLink = document.getElementById('privateLink').value;
 
-        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized") || targetInput.value.includes("Enter the owner")) {
+        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized") || targetInput.value.includes("Enter the owner") || targetInput.value.includes("Looking up")) {
             return alert("Drop a valid link in Step 1 first, twin!");
         }
         
