@@ -34,8 +34,6 @@
 
     .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #0095f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .story-note { font-size: 12px; color: #e1306c; margin-top: -20px; margin-bottom: 20px; text-align: center; display: none; }
   </style>
 </head>
 <body>
@@ -44,12 +42,6 @@
     
     <label class="step-label">Step 1: Paste IG Link (Post, Reel, Story, or Highlight)</label>
     <input id="privateLink" type="text" placeholder="https://instagram.com/p/..." oninput="generateSource()">
-    
-    <div id="storyUserIdSection" style="display: none;">
-      <label class="step-label">Step 1.5: Enter the Story Owner's User ID (numeric)</label>
-      <input id="storyUserId" type="text" placeholder="e.g. 74552263298" oninput="generateSource()">
-      <p class="story-note" id="storyNote" style="display: block;">⚠️ Stories require the owner's numeric user ID. Find it via their profile page source or a user ID lookup tool.</p>
-    </div>
     
     <label class="step-label">Step 2: Generate & Copy Link</label>
     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -72,18 +64,14 @@
       document.getElementById('sourceLink').value = '';
       document.getElementById('rawCode').value = '';
       document.getElementById('results').innerHTML = '';
-      document.getElementById('storyUserIdSection').style.display = 'none';
-      if (document.getElementById('storyUserId')) {
-        document.getElementById('storyUserId').value = '';
-      }
     }
 
-    function generateSource() {
+    // Changed to async to handle the stealth User ID fetch
+    async function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
-      let storySection = document.getElementById('storyUserIdSection');
 
-      if (!link) { targetInput.value = ""; storySection.style.display = 'none'; return; }
+      if (!link) { targetInput.value = ""; return; }
 
       try {
         let urlObj = new URL(link);
@@ -91,10 +79,9 @@
         let graphqlBase = "https://www.instagram.com/graphql/query/?";
         let queryHash = "de8017ee0a7c9c45ec4260733d81ea31";
 
-        // 1. Check for Highlights (the /s/ URL)
+        // 1. Check for Highlights
         let highlightMatch = path.match(/\/s\/([a-zA-Z0-9_=-]+)/);
         if (highlightMatch && highlightMatch[1]) {
-            storySection.style.display = 'none';
             let base64str = highlightMatch[1].replace(/-/g, '+').replace(/_/g, '/');
             while (base64str.length % 4) { base64str += '='; }
             let decoded = atob(base64str); 
@@ -115,39 +102,48 @@
             return;
         }
 
-        // 2. Check for regular Stories — uses GraphQL with reel_ids
+        // 2. Check for regular Stories — AUTO-FETCH USER ID METHOD
         let storyMatch = path.match(/\/stories\/([^\/]+)\/(\d+)/);
         if (storyMatch) {
             let storyUsername = storyMatch[1];
-            let storyMediaId = storyMatch[2];
+            targetInput.value = `⏳ Sniffing User ID for @${storyUsername}...`;
             
-            // Show the user ID input field
-            storySection.style.display = 'block';
-            
-            let userId = document.getElementById('storyUserId').value.trim();
-            
-            if (!userId) {
-                targetInput.value = "Enter the owner's User ID in Step 1.5 above ☝️";
-                return;
+            try {
+                // Silently bounce off a proxy to Instagram's Search API
+                let searchUrl = `https://www.instagram.com/web/search/topsearch/?query=${storyUsername}`;
+                let res = await fetch('https://corsproxy.io/?' + encodeURIComponent(searchUrl));
+                let data = await res.json();
+                
+                let userId = null;
+                // Dig out the numeric ID from the search results
+                if (data.users && data.users.length > 0) {
+                    let exactMatch = data.users.find(u => u.user.username === storyUsername);
+                    userId = exactMatch ? exactMatch.user.pk : data.users[0].user.pk;
+                }
+
+                if (userId) {
+                    let vars = JSON.stringify({
+                      "reel_ids": [userId],
+                      "tag_names": [],
+                      "location_ids": [],
+                      "highlight_reel_ids": [],
+                      "precomposed_overlay": false,
+                      "show_story_viewer_list": false,
+                      "story_viewer_fetch_count": 50,
+                      "story_viewer_cursor": "",
+                      "stories_video_dash_manifest": false
+                    });
+                    targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
+                } else {
+                    // Fallback to backdoor if the search fails
+                    targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
+                }
+            } catch (err) {
+                // Fallback to backdoor if the proxy gets blocked
+                targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
             }
-            
-            let vars = JSON.stringify({
-              "reel_ids": [userId],
-              "tag_names": [],
-              "location_ids": [],
-              "highlight_reel_ids": [],
-              "precomposed_overlay": false,
-              "show_story_viewer_list": false,
-              "story_viewer_fetch_count": 50,
-              "story_viewer_cursor": "",
-              "stories_video_dash_manifest": false
-            });
-            targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
             return;
         }
-
-        // Hide story section for non-story links
-        storySection.style.display = 'none';
 
         // 3. Regular Posts, Reels, and IGTV
         let match = path.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
@@ -171,10 +167,9 @@
 
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
-        let privateLink = document.getElementById('privateLink').value;
 
-        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized") || targetInput.value.includes("Enter the owner")) {
-            return alert("Drop a valid link in Step 1 first, twin!");
+        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not recognized") || targetInput.value.includes("⏳")) {
+            return alert("Hold up, let it finish cooking the link first!");
         }
         
         navigator.clipboard.writeText(targetInput.value).then(() => {
@@ -191,7 +186,7 @@
       if(!code) return alert("Paste the raw code first!");
       
       let resDiv = document.getElementById('results');
-      resDiv.innerHTML = `<div style=\"grid-column: span 2; text-align:center;\"><div class=\"spinner\"></div><p>Snatching media... ⏳</p></div>`;
+      resDiv.innerHTML = `<div style="grid-column: span 2; text-align:center;"><div class="spinner"></div><p>Snatching media... ⏳</p></div>`;
 
       try {
         let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
@@ -240,7 +235,7 @@
           mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
 
           if(unique.length === 0) {
-              return resDiv.innerHTML = `<p style=\"grid-column: span 2; color: red; text-align: center;\">Couldn't find media in that raw text dump bro.</p>`;
+              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump bro.</p>`;
           }
           
           unique.forEach(media => {
@@ -248,7 +243,7 @@
             let preview = document.createElement('div'); preview.className = "preview-container";
             
             if (media.type === 'video') {
-              preview.innerHTML = `<video controls playsinline preload=\"metadata\" referrerpolicy=\"no-referrer\" poster=\"${media.thumb}\"><source src=\"${media.url}\" type=\"video/mp4\"></video>`;
+              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer" poster="${media.thumb}"><source src="${media.url}" type="video/mp4"></video>`;
             } else {
               let img = document.createElement('img'); img.src = media.url; img.referrerPolicy = 'no-referrer';
               img.onerror = function() { if(!this.dataset.retried){ this.dataset.retried = '1'; this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(media.url); }};
@@ -339,10 +334,10 @@
             resDiv.appendChild(card);
           });
         } else {
-          resDiv.innerHTML = `<p style=\"grid-column: span 2; color: red; text-align: center;\">${result.message}</p>`;
+          resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">${result.message}</p>`;
         }
       } catch (e) {
-        resDiv.innerHTML = `<p style=\"grid-column: span 2; color: red; text-align: center;\">Server is dead right now.</p>`;
+        resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Server is dead right now.</p>`;
       }
     }
   </script>
