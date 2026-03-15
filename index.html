@@ -66,9 +66,12 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    function generateSource() {
+    async function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
+
+      // Strip out that blocked __a=1 stuff if it's pasted
+      link = link.split('?')[0];
 
       if (!link) { targetInput.value = ""; return; }
 
@@ -78,7 +81,7 @@
         let graphqlBase = "https://www.instagram.com/graphql/query/?";
         let queryHash = "de8017ee0a7c9c45ec4260733d81ea31";
 
-        // 1. Check for Highlights
+        // 1. Check for old Highlight format (/s/)
         let highlightMatch = path.match(/\/s\/([a-zA-Z0-9_=-]+)/);
         if (highlightMatch && highlightMatch[1]) {
             let base64str = highlightMatch[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -87,24 +90,44 @@
             
             let highlightId = decoded.split(':')[1]; 
             let vars = JSON.stringify({
-              "reel_ids": [],
-              "tag_names": [],
-              "location_ids": [],
-              "highlight_reel_ids": [highlightId],
-              "precomposed_overlay": false,
-              "show_story_viewer_list": false,
-              "story_viewer_fetch_count": 50,
-              "story_viewer_cursor": "",
-              "stories_video_dash_manifest": false
+              "reel_ids": [], "tag_names": [], "location_ids": [], "highlight_reel_ids": [highlightId],
+              "precomposed_overlay": false, "show_story_viewer_list": false, "story_viewer_fetch_count": 50,
+              "story_viewer_cursor": "", "stories_video_dash_manifest": false
             });
             targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
             return;
         }
 
-        // 2. Check for regular Stories — INSTANT BACKDOOR LINK (No Proxies/Servers Needed)
-        let storyMatch = path.match(/\/stories\/[^\/]+\/(\d+)/);
-        if (storyMatch && storyMatch[1]) {
-            targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
+        // 2. Check for Stories & New Highlights (Username format) - HTML SCRAPER METHOD
+        let storyMatch = path.match(/\/stories\/([^\/]+)\/(\d+)/);
+        if (storyMatch) {
+            let storyUsername = storyMatch[1];
+            targetInput.value = `⏳ Scraping profile to find ID for @${storyUsername}...`;
+            
+            try {
+                // Fetch the public profile page HTML via AllOrigins to avoid CORS
+                let profileUrl = `https://www.instagram.com/${storyUsername}/`;
+                let res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(profileUrl)}`);
+                let data = await res.json();
+                let htmlCode = data.contents;
+                
+                // Dig through the raw HTML to find IG's hidden user ID tags
+                let idMatch = htmlCode.match(/"profile_id":"(\d+)"/) || htmlCode.match(/instapp:owner_user_id"\s+content="(\d+)"/);
+                
+                if (idMatch && idMatch[1]) {
+                    let userId = idMatch[1];
+                    let vars = JSON.stringify({
+                      "reel_ids": [userId], "tag_names": [], "location_ids": [], "highlight_reel_ids": [],
+                      "precomposed_overlay": false, "show_story_viewer_list": false, "story_viewer_fetch_count": 50,
+                      "story_viewer_cursor": "", "stories_video_dash_manifest": false
+                    });
+                    targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
+                } else {
+                    targetInput.value = "Error: Couldn't extract the ID from the profile page.";
+                }
+            } catch (err) {
+                targetInput.value = "Error: Proxy couldn't load the profile.";
+            }
             return;
         }
 
@@ -112,10 +135,7 @@
         let match = path.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/);
         if(match && match[1]) {
           let vars = JSON.stringify({
-            "shortcode": match[1], 
-            "fetch_tagged_user_count": null, 
-            "hoisted_comment_id": null, 
-            "hoisted_reply_id": null
+            "shortcode": match[1], "fetch_tagged_user_count": null, "hoisted_comment_id": null, "hoisted_reply_id": null
           });
           targetInput.value = `${graphqlBase}doc_id=8845758582119845&variables=${encodeURIComponent(vars)}`;
           return;
@@ -131,8 +151,8 @@
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
 
-        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not")) {
-            return alert("Drop a valid link in Step 1 first, twin!");
+        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not") || targetInput.value.includes("⏳") || targetInput.value.includes("Error")) {
+            return alert("Hold up, wait for a valid link to generate first, twin!");
         }
         
         navigator.clipboard.writeText(targetInput.value).then(() => {
@@ -144,7 +164,7 @@
         });
     }
 
-    // 100% CLIENT-SIDE PARSER - ZERO SERVER FETCHES = ZERO SERVER ERRORS
+    // 100% BROWSER PARSER - NO MORE SERVER CRASHES
     async function runPrivate() {
       let code = document.getElementById('rawCode').value;
       if(!code) return alert("Paste the raw JSON code first!");
@@ -152,7 +172,6 @@
       let resDiv = document.getElementById('results');
       resDiv.innerHTML = `<div style="grid-column: span 2; text-align:center;"><div class="spinner"></div><p>Snatching media... ⏳</p></div>`;
 
-      // Simulating a tiny delay so it feels like it's processing
       await new Promise(r => setTimeout(r, 400));
 
       try {
@@ -176,7 +195,6 @@
                   mediaLinks.push({ type: 'image', url: obj.image_versions2.candidates[0].url });
               }
           }
-
           for (let key in obj) if (typeof obj[key] === 'object') dig(obj[key]);
         }
         
@@ -203,13 +221,8 @@
           }
           
           let row = document.createElement('div'); row.className = "action-row";
-          
           let vBtn = document.createElement('a'); vBtn.href = media.url; vBtn.target = "_blank"; vBtn.className = "download-link"; vBtn.innerText = "👁️ View";
-          
-          let dBtn = document.createElement('a'); 
-          dBtn.href = "#"; 
-          dBtn.className = "download-link"; 
-          dBtn.innerText = "⬇️ Save";
+          let dBtn = document.createElement('a'); dBtn.href = "#"; dBtn.className = "download-link"; dBtn.innerText = "⬇️ Save";
           
           dBtn.onclick = async (e) => { 
               e.preventDefault();
@@ -221,9 +234,7 @@
                       let a = document.createElement('a');
                       a.href = media.url + "&dl=1"; 
                       a.setAttribute('download', `JL_Video_${Date.now()}.mp4`);
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a);
                       dBtn.innerText = "✅ Force Sent";
                       setTimeout(() => dBtn.innerText = originalText, 2500);
                   } catch(err) {
@@ -256,21 +267,17 @@
 
           if (media.type === 'video' && media.thumb) {
               let tBtn = document.createElement('a');
-              tBtn.href = "#";
-              tBtn.className = "thumb-btn";
-              tBtn.innerText = "🖼️ Download Thumbnail";
+              tBtn.href = "#"; tBtn.className = "thumb-btn"; tBtn.innerText = "🖼️ Download Thumbnail";
               tBtn.onclick = async (e) => {
                   e.preventDefault();
-                  let ogTxt = tBtn.innerText;
-                  tBtn.innerText = "⏳ Pulling...";
+                  let ogTxt = tBtn.innerText; tBtn.innerText = "⏳ Pulling...";
                   try {
                       let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.thumb);
                       let res = await fetch(proxyUrl);
                       let blob = await res.blob();
                       let blobUrl = window.URL.createObjectURL(blob);
                       let a = document.createElement('a');
-                      a.href = blobUrl;
-                      a.download = `JL_Thumbnail_${Date.now()}.jpg`;
+                      a.href = blobUrl; a.download = `JL_Thumbnail_${Date.now()}.jpg`;
                       document.body.appendChild(a); a.click(); document.body.removeChild(a);
                       window.URL.revokeObjectURL(blobUrl);
                       tBtn.innerText = "✅ Saved!";
@@ -282,12 +289,10 @@
               };
               card.appendChild(tBtn);
           }
-
           resDiv.appendChild(card);
         });
-
       } catch (e) {
-        resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Wait, that text you pasted in Step 3 ain't valid JSON formatting. Did you copy everything from the page?</p>`;
+        resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Wait, that text you pasted ain't valid JSON formatting. Did you copy everything from the page?</p>`;
       }
     }
   </script>
