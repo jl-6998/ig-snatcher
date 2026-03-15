@@ -66,7 +66,7 @@
       document.getElementById('results').innerHTML = '';
     }
 
-    async function generateSource() {
+    function generateSource() {
       let link = document.getElementById('privateLink').value;
       let targetInput = document.getElementById('sourceLink');
 
@@ -101,40 +101,10 @@
             return;
         }
 
-        // 2. Check for regular Stories — PRO BACKEND METHOD
-        let storyMatch = path.match(/\/stories\/([^\/]+)\/(\d+)/);
-        if (storyMatch) {
-            let storyUsername = storyMatch[1];
-            targetInput.value = `⏳ Asking Python server for @${storyUsername}'s ID...`;
-            
-            try {
-                let res = await fetch('https://seeyha.pythonanywhere.com/get_ig_id', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: storyUsername })
-                });
-                
-                let result = await res.json();
-                
-                if (result.status === "success" && result.user_id) {
-                    let vars = JSON.stringify({
-                      "reel_ids": [result.user_id],
-                      "tag_names": [],
-                      "location_ids": [],
-                      "highlight_reel_ids": [],
-                      "precomposed_overlay": false,
-                      "show_story_viewer_list": false,
-                      "story_viewer_fetch_count": 50,
-                      "story_viewer_cursor": "",
-                      "stories_video_dash_manifest": false
-                    });
-                    targetInput.value = `${graphqlBase}query_hash=${queryHash}&variables=${encodeURIComponent(vars)}`;
-                } else {
-                    targetInput.value = `❌ Backend Error: ${result.message || "Couldn't find ID"}`;
-                }
-            } catch (err) {
-                targetInput.value = "❌ Server error. Did you reload PythonAnywhere?";
-            }
+        // 2. Check for regular Stories — INSTANT BACKDOOR LINK (No Python Server Needed)
+        let storyMatch = path.match(/\/stories\/[^\/]+\/(\d+)/);
+        if (storyMatch && storyMatch[1]) {
+            targetInput.value = `${urlObj.origin}${path}?__a=1&__d=dis`;
             return;
         }
 
@@ -161,8 +131,8 @@
     function copySource() {
         let targetInput = document.getElementById('sourceLink');
 
-        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not") || targetInput.value.includes("⏳") || targetInput.value.includes("❌")) {
-            return alert("Hold up, wait for a valid link to generate first!");
+        if (!targetInput.value || targetInput.value.includes("Waiting") || targetInput.value.includes("Format not")) {
+            return alert("Drop a valid link in Step 1 first, twin!");
         }
         
         navigator.clipboard.writeText(targetInput.value).then(() => {
@@ -174,163 +144,152 @@
         });
     }
 
+    // THIS IS NOW 100% BROWSER-BASED. NO SERVER CRASHES POSSIBLE.
     async function runPrivate() {
       let code = document.getElementById('rawCode').value;
-      if(!code) return alert("Paste the raw code first!");
+      if(!code) return alert("Paste the raw JSON code first!");
       
       let resDiv = document.getElementById('results');
       resDiv.innerHTML = `<div style="grid-column: span 2; text-align:center;"><div class="spinner"></div><p>Snatching media... ⏳</p></div>`;
 
+      // Simulating a tiny delay just for the UI animation
+      await new Promise(r => setTimeout(r, 400));
+
       try {
-        let response = await fetch('https://seeyha.pythonanywhere.com/snatch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ raw_data: code })
-        });
-        
-        let result = await response.json();
+        let sourceData = JSON.parse(code);
         resDiv.innerHTML = ""; 
         
-        if (result.status === "success") {
-          let mediaLinks = [];
-          let sourceData = null;
-          
-          try { sourceData = JSON.parse(code); } 
-          catch(e) { sourceData = null; }
+        let mediaLinks = [];
 
-          if (sourceData) {
-            function dig(obj) {
-              if (!obj || typeof obj !== 'object') return;
-              
-              if (obj.video_url) {
-                  mediaLinks.push({ type: 'video', url: obj.video_url, thumb: obj.thumbnail_url || obj.display_url || '' });
-              } else if (obj.video_versions && obj.video_versions.length > 0 && obj.video_versions[0].url) {
-                  mediaLinks.push({ type: 'video', url: obj.video_versions[0].url, thumb: '' });
-              } else if (obj.video_resources && obj.video_resources.length > 0 && obj.video_resources[0].src) {
-                  mediaLinks.push({ type: 'video', url: obj.video_resources[0].src, thumb: obj.display_url || '' });
-              } else if (obj.display_url && !obj.video_url && !obj.video_resources) {
-                  mediaLinks.push({ type: 'image', url: obj.display_url });
-              } else if (obj.image_versions2 && obj.image_versions2.candidates && obj.image_versions2.candidates.length > 0) {
-                  if (!obj.video_versions && !obj.video_resources) {
-                      mediaLinks.push({ type: 'image', url: obj.image_versions2.candidates[0].url });
+        function dig(obj) {
+          if (!obj || typeof obj !== 'object') return;
+          
+          if (obj.video_url) {
+              mediaLinks.push({ type: 'video', url: obj.video_url, thumb: obj.thumbnail_url || obj.display_url || '' });
+          } else if (obj.video_versions && obj.video_versions.length > 0 && obj.video_versions[0].url) {
+              mediaLinks.push({ type: 'video', url: obj.video_versions[0].url, thumb: '' });
+          } else if (obj.video_resources && obj.video_resources.length > 0 && obj.video_resources[0].src) {
+              mediaLinks.push({ type: 'video', url: obj.video_resources[0].src, thumb: obj.display_url || '' });
+          } else if (obj.display_url && !obj.video_url && !obj.video_resources) {
+              mediaLinks.push({ type: 'image', url: obj.display_url });
+          } else if (obj.image_versions2 && obj.image_versions2.candidates && obj.image_versions2.candidates.length > 0) {
+              if (!obj.video_versions && !obj.video_resources) {
+                  mediaLinks.push({ type: 'image', url: obj.image_versions2.candidates[0].url });
+              }
+          }
+
+          for (let key in obj) if (typeof obj[key] === 'object') dig(obj[key]);
+        }
+        
+        // Let the browser dig through the JSON
+        dig(sourceData);
+
+        let unique = [];
+        let seen = new Set();
+        mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
+
+        if(unique.length === 0) {
+            return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump bro. Are you sure you pasted the full JSON?</p>`;
+        }
+        
+        unique.forEach(media => {
+          let card = document.createElement('div'); card.className = "media-card";
+          let preview = document.createElement('div'); preview.className = "preview-container";
+          
+          if (media.type === 'video') {
+            preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer" poster="${media.thumb}"><source src="${media.url}" type="video/mp4"></video>`;
+          } else {
+            let img = document.createElement('img'); img.src = media.url; img.referrerPolicy = 'no-referrer';
+            img.onerror = function() { if(!this.dataset.retried){ this.dataset.retried = '1'; this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(media.url); }};
+            preview.appendChild(img);
+          }
+          
+          let row = document.createElement('div'); row.className = "action-row";
+          
+          let vBtn = document.createElement('a'); vBtn.href = media.url; vBtn.target = "_blank"; vBtn.className = "download-link"; vBtn.innerText = "👁️ View";
+          
+          let dBtn = document.createElement('a'); 
+          dBtn.href = "#"; 
+          dBtn.className = "download-link"; 
+          dBtn.innerText = "⬇️ Save";
+          
+          dBtn.onclick = async (e) => { 
+              e.preventDefault();
+              let originalText = dBtn.innerText;
+              dBtn.innerText = "⏳...";
+
+              if(media.type === 'video') {
+                  try {
+                      let a = document.createElement('a');
+                      a.href = media.url + "&dl=1"; 
+                      a.setAttribute('download', `JL_Video_${Date.now()}.mp4`);
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      dBtn.innerText = "✅ Force Sent";
+                      setTimeout(() => dBtn.innerText = originalText, 2500);
+                  } catch(err) {
+                      window.open(media.url, '_blank');
+                  }
+              } else {
+                  try {
+                      let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.url);
+                      let res = await fetch(proxyUrl);
+                      let blob = await res.blob();
+                      let blobUrl = window.URL.createObjectURL(blob);
+                      let a = document.createElement('a');
+                      a.href = blobUrl;
+                      a.download = `JL_Image_${Date.now()}.jpg`;
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                      window.URL.revokeObjectURL(blobUrl);
+                      dBtn.innerText = "✅ Saved";
+                      setTimeout(() => dBtn.innerText = originalText, 2000);
+                  } catch(err) {
+                      window.open(media.url, '_blank');
+                      dBtn.innerText = originalText;
                   }
               }
+          };
 
-              for (let key in obj) if (typeof obj[key] === 'object') dig(obj[key]);
-            }
-            dig(sourceData);
-          } else if (result.links) {
-             mediaLinks = result.links.map(l => ({ type: l.includes('.mp4') ? 'video' : 'image', url: l, thumb: '' }));
+          row.appendChild(vBtn); 
+          row.appendChild(dBtn);
+          card.appendChild(preview); 
+          card.appendChild(row);
+
+          if (media.type === 'video' && media.thumb) {
+              let tBtn = document.createElement('a');
+              tBtn.href = "#";
+              tBtn.className = "thumb-btn";
+              tBtn.innerText = "🖼️ Download Thumbnail";
+              tBtn.onclick = async (e) => {
+                  e.preventDefault();
+                  let ogTxt = tBtn.innerText;
+                  tBtn.innerText = "⏳ Pulling...";
+                  try {
+                      let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.thumb);
+                      let res = await fetch(proxyUrl);
+                      let blob = await res.blob();
+                      let blobUrl = window.URL.createObjectURL(blob);
+                      let a = document.createElement('a');
+                      a.href = blobUrl;
+                      a.download = `JL_Thumbnail_${Date.now()}.jpg`;
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                      window.URL.revokeObjectURL(blobUrl);
+                      tBtn.innerText = "✅ Saved!";
+                      setTimeout(() => tBtn.innerText = ogTxt, 2000);
+                  } catch(err) {
+                      window.open(media.thumb, '_blank');
+                      tBtn.innerText = ogTxt;
+                  }
+              };
+              card.appendChild(tBtn);
           }
 
-          let unique = [];
-          let seen = new Set();
-          mediaLinks.forEach(m => { if(!seen.has(m.url)){ seen.add(m.url); unique.push(m); }});
+          resDiv.appendChild(card);
+        });
 
-          if(unique.length === 0) {
-              return resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Couldn't find media in that raw text dump bro.</p>`;
-          }
-          
-          unique.forEach(media => {
-            let card = document.createElement('div'); card.className = "media-card";
-            let preview = document.createElement('div'); preview.className = "preview-container";
-            
-            if (media.type === 'video') {
-              preview.innerHTML = `<video controls playsinline preload="metadata" referrerpolicy="no-referrer" poster="${media.thumb}"><source src="${media.url}" type="video/mp4"></video>`;
-            } else {
-              let img = document.createElement('img'); img.src = media.url; img.referrerPolicy = 'no-referrer';
-              img.onerror = function() { if(!this.dataset.retried){ this.dataset.retried = '1'; this.src = 'https://wsrv.nl/?url=' + encodeURIComponent(media.url); }};
-              preview.appendChild(img);
-            }
-            
-            let row = document.createElement('div'); row.className = "action-row";
-            
-            let vBtn = document.createElement('a'); vBtn.href = media.url; vBtn.target = "_blank"; vBtn.className = "download-link"; vBtn.innerText = "👁️ View";
-            
-            let dBtn = document.createElement('a'); 
-            dBtn.href = "#"; 
-            dBtn.className = "download-link"; 
-            dBtn.innerText = "⬇️ Save";
-            
-            dBtn.onclick = async (e) => { 
-                e.preventDefault();
-                let originalText = dBtn.innerText;
-                dBtn.innerText = "⏳...";
-
-                if(media.type === 'video') {
-                    try {
-                        let a = document.createElement('a');
-                        a.href = media.url + "&dl=1"; 
-                        a.setAttribute('download', `JL_Video_${Date.now()}.mp4`);
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        dBtn.innerText = "✅ Force Sent";
-                        setTimeout(() => dBtn.innerText = originalText, 2500);
-                    } catch(err) {
-                        window.open(media.url, '_blank');
-                    }
-                } else {
-                    try {
-                        let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.url);
-                        let res = await fetch(proxyUrl);
-                        let blob = await res.blob();
-                        let blobUrl = window.URL.createObjectURL(blob);
-                        let a = document.createElement('a');
-                        a.href = blobUrl;
-                        a.download = `JL_Image_${Date.now()}.jpg`;
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                        window.URL.revokeObjectURL(blobUrl);
-                        dBtn.innerText = "✅ Saved";
-                        setTimeout(() => dBtn.innerText = originalText, 2000);
-                    } catch(err) {
-                        window.open(media.url, '_blank');
-                        dBtn.innerText = originalText;
-                    }
-                }
-            };
-
-            row.appendChild(vBtn); 
-            row.appendChild(dBtn);
-            card.appendChild(preview); 
-            card.appendChild(row);
-
-            if (media.type === 'video' && media.thumb) {
-                let tBtn = document.createElement('a');
-                tBtn.href = "#";
-                tBtn.className = "thumb-btn";
-                tBtn.innerText = "🖼️ Download Thumbnail";
-                tBtn.onclick = async (e) => {
-                    e.preventDefault();
-                    let ogTxt = tBtn.innerText;
-                    tBtn.innerText = "⏳ Pulling Cover...";
-                    try {
-                        let proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(media.thumb);
-                        let res = await fetch(proxyUrl);
-                        let blob = await res.blob();
-                        let blobUrl = window.URL.createObjectURL(blob);
-                        let a = document.createElement('a');
-                        a.href = blobUrl;
-                        a.download = `JL_Thumbnail_${Date.now()}.jpg`;
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                        window.URL.revokeObjectURL(blobUrl);
-                        tBtn.innerText = "✅ Saved!";
-                        setTimeout(() => tBtn.innerText = ogTxt, 2000);
-                    } catch(err) {
-                        window.open(media.thumb, '_blank');
-                        tBtn.innerText = ogTxt;
-                    }
-                };
-                card.appendChild(tBtn);
-            }
-
-            resDiv.appendChild(card);
-          });
-        } else {
-          resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">${result.message}</p>`;
-        }
       } catch (e) {
-        resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Server is dead right now.</p>`;
+        resDiv.innerHTML = `<p style="grid-column: span 2; color: red; text-align: center;">Wait, that text you pasted in Step 3 ain't valid JSON formatting. Did you copy everything from the page?</p>`;
       }
     }
   </script>
